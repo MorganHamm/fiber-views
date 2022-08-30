@@ -1,17 +1,49 @@
-from setuptools import setup
+#!/usr/bin/env python
 
- setup(
-   name='fiber_views',
-   version='0.1.0',
-   author='Morgan Hamm',
-   # packages=['package_name', 'package_name.test'],
-   # scripts=[],
-   url='https://github.com/MorganHamm/fiber-views/',
-   license='LICENSE.txt',
-   description='a python package for extracting and manipulating "views" of Fiber-seq data',
-   long_description=open('README.md').read(),
-   install_requires=[
-       "pysam >= 0.19.1",
-       "anndata",
-   ],
+"""The setup script."""
+
+from setuptools import setup, find_packages
+
+with open('README.rst') as readme_file:
+    readme = readme_file.read()
+
+with open('HISTORY.rst') as history_file:
+    history = history_file.read()
+
+requirements = ['Click>=7.0', ]
+
+test_requirements = ['pytest>=3', ]
+
+setup(
+    author="Morgan Oliver Hamm",
+    author_email='mhamm@uw.edu',
+    python_requires='>=3.6',
+    classifiers=[
+        'Development Status :: 2 - Pre-Alpha',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Natural Language :: English',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+    ],
+    description="a python package for extracting and manipulating "views" of Fiber-seq data",
+    entry_points={
+        'console_scripts': [
+            'fiber_views=fiber_views.cli:main',
+        ],
+    },
+    install_requires=requirements,
+    license="MIT license",
+    long_description=readme + '\n\n' + history,
+    include_package_data=True,
+    keywords='fiber_views',
+    name='fiber_views',
+    packages=find_packages(include=['fiber_views', 'fiber_views.*']),
+    test_suite='tests',
+    tests_require=test_requirements,
+    url='https://github.com/morganhamm/fiber_views',
+    version='0.1.0',
+    zip_safe=False,
 )
