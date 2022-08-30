@@ -1,10 +1,10 @@
 from setuptools import setup
 
  setup(
-   name='fiber-viewer',
+   name='fiber_views',
    version='0.1.0',
    author='Morgan Hamm',
-   packages=['package_name', 'package_name.test'],
+   # packages=['package_name', 'package_name.test'],
    # scripts=[],
    url='https://github.com/MorganHamm/fiber-views/',
    license='LICENSE.txt',
