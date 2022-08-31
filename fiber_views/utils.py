@@ -15,9 +15,12 @@ import pysam
 from Bio.Seq import Seq
 import re
 
+
 CPG_MODS = [("C", 0, "m")]
 M6A_MODS = [("A", 0, "a"), ("T", 1, "a")]
 D_TYPE = np.int64
+
+
 
 # =============================================================================
 # CLASSES
@@ -81,6 +84,7 @@ def print_aligned_reads(reads, offset=5):
         
 
 def print_mod_contexts(read, mod_positions, offset=5, use_strand=True):
+    # test function make sure mods are aligned correctly
     alignment = read.alignment
     for i, mod_pos in enumerate(mod_positions):
         if alignment.is_reverse and use_strand:
@@ -92,31 +96,96 @@ def print_mod_contexts(read, mod_positions, offset=5, use_strand=True):
               seq[mod_pos:mod_pos+offset+1])
     
     
+def get_strand_correct_mods(read, mod_type=M6A_MODS, centered=False):
+    # get modification positions and correct them to match the forward genomic strand
+    raw_mods = get_mod_pos_from_rec(read.alignment, mods=mod_type)
+    if raw_mods is None:
+        return(None)
+    if read.alignment.is_reverse:
+        if mod_type == CPG_MODS:
+            # CpGs the reverse base is offset by 1 as compared to A/Ts
+            mods = read.alignment.query_length - raw_mods - 2 # for cpg
+        else:
+            mods = read.alignment.query_length - raw_mods - 1 # for m6A
+        mods = np.flip(mods)
+    else:
+        mods = raw_mods
+    if centered:
+        mods = mods - read.query_position
+    return(mods)
+  
+def filter_reads_by_window(reads, window_offset):
+    # filter reads to only those that fill the window around the center position
+    return([read for read in reads if read.query_position - window_offset >= 0 and 
+     read.query_position + window_offset <= read.alignment.query_length])
+  
+def build_seq_array(reads, window_offset):
+    # create a byte array of the sequences. 
+    # warning, filter reads first
+    char_array = np.empty((len(reads), 2*window_offset), dtype="S1")
+    for i, read in enumerate(reads):
+        center_pos = read.query_position
+        seq = read.alignment.query_sequence[center_pos - window_offset : center_pos + window_offset]
+        char_array[i, :] = np.frombuffer(seq.encode('UTF-8'), dtype="S1")
+    return(char_array)
+
+
+def build_mod_array(reads, window_offset, mod_type=M6A_MODS, sparse=True):
+    # if sparse:
+    #     mod_mtx = coo_matrix((len(reads), 2*window_offset), dtype=bool)
+    # else:
+    #     mod_mtx = np.empty((len(reads), 2*window_offset), dtype=bool)
+    I = []
+    J = []
+    for i, read in enumerate(reads):
+        mods = get_strand_correct_mods(read, mod_type, centered=True)
+        print(i)
+        if mods is None:
+            continue
+        mods = mods - window_offset
+        mods = [mod for mod in mods if mod >= 0 and mod <= 2*window_offset-1]
+        for mod in mods:
+            I.append(i)
+            J.append(mod)
+    V = np.ones((len(J)), dtype=bool)
+    mod_mtx = coo_matrix((V, (I, J)), shape=(len(reads), 2*window_offset))
+            
+    return(mod_mtx)
+
 
 
 # =============================================================================
 # MAIN/TEST CODE
 # =============================================================================
 
-bamfile = pysam.AlignmentFile(
-    "/home/morgan/git/pysam_and_anndata/aligned.fiberseq.chr3_trunc.bam", "rb")
+
+import os
+os.chdir(os.path.expanduser("~/git/fiber_views"))
+
+bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
 
 
 reads = get_reads_at_center_pos(bamfile, "chr3:2005001")
 
-print_aligned_reads(reads, offset=10)
+print_aligned_reads(reads, offset=50)
 
-x = 20
-mod_type = CPG_MODS # M6A_MODS, CPG_MODS
-read_x_mods = get_mod_pos_from_rec(reads[x].alignment, mods=M6A_MODS)
-if reads[x].alignment.is_reverse:
-    if mod_type == CPG_MODS:
-        # CpGs the reverse base is offset by 1 as compared to A/Ts
-        read_x_mods_2 = reads[x].alignment.query_length - read_x_mods - 2 # for cpg
-    else:
-        read_x_mods_2 = reads[x].alignment.query_length - read_x_mods - 1 # for m6A
-else:
-    read_x_mods_2
-print_mod_contexts(reads[x], read_x_mods)
-print_mod_contexts(reads[x], read_x_mods_2, use_strand=False)
 
+
+x = 50
+mod_type = M6A_MODS
+mods = get_strand_correct_mods(reads[x], mod_type)
+
+print_mod_contexts(reads[x], mods, use_strand=False)
+print(reads[x].alignment.is_reverse)
+
+win_offset = 2000
+window_offset = 1000
+filtered_reads = filter_reads_by_window(reads, win_offset)
+
+
+seq_array = build_seq_array(filtered_reads, 2000)
+
+cpg_array = build_mod_array(filtered_reads, 2000, mod_type=CPG_MODS)
+m6a_array = build_mod_array(filtered_reads, 2000, mod_type=M6A_MODS)
+
+bytes(seq_array[0,:]).decode('UTF-8')[350]
