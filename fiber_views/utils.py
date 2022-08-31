@@ -36,7 +36,7 @@ class GenomicPosition:
 # FUNCTIONS
 # =============================================================================
 
-def get_mod_pos_from_rec(rec, mods=M6A_MODS):
+def get_mod_pos_from_rec(rec, mods=M6A_MODS, score_cutoff=200):
     # from Mitchell's extract_bed_from_bam.py
     # rec should be a pysam.libcalignedsegment.AlignedSegment (PileupRead.alignment)
     if rec.modified_bases_forward is None:
@@ -44,7 +44,9 @@ def get_mod_pos_from_rec(rec, mods=M6A_MODS):
     positions = []
     for mod in mods:
         if mod in rec.modified_bases_forward:
-            pos = np.array(rec.modified_bases_forward[mod], dtype=D_TYPE)[:, 0]
+            mod_score_array = np.array(rec.modified_bases_forward[mod], dtype=D_TYPE)
+            pos = mod_score_array[mod_score_array[:,1] >= score_cutoff, 0]
+            # pos = np.array(rec.modified_bases_forward[mod], dtype=D_TYPE)[:, 0]
             positions.append(pos)
     if len(positions) < 1:
         return None
@@ -131,24 +133,23 @@ def build_seq_array(reads, window_offset):
 
 
 def build_mod_array(reads, window_offset, mod_type=M6A_MODS, sparse=True):
-    # if sparse:
-    #     mod_mtx = coo_matrix((len(reads), 2*window_offset), dtype=bool)
-    # else:
-    #     mod_mtx = np.empty((len(reads), 2*window_offset), dtype=bool)
     I = []
     J = []
+    none_count = 0
     for i, read in enumerate(reads):
         mods = get_strand_correct_mods(read, mod_type, centered=True)
-        print(i)
+        # print(i)
         if mods is None:
+            none_count += 1
             continue
-        mods = mods - window_offset
+        mods = mods + window_offset
         mods = [mod for mod in mods if mod >= 0 and mod <= 2*window_offset-1]
         for mod in mods:
             I.append(i)
             J.append(mod)
     V = np.ones((len(J)), dtype=bool)
     mod_mtx = coo_matrix((V, (I, J)), shape=(len(reads), 2*window_offset))
+    print(none_count)
             
     return(mod_mtx)
 
@@ -165,7 +166,7 @@ os.chdir(os.path.expanduser("~/git/fiber_views"))
 bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
 
 
-reads = get_reads_at_center_pos(bamfile, "chr3:2005001")
+reads = get_reads_at_center_pos(bamfile, "chr3:2015001")
 
 print_aligned_reads(reads, offset=50)
 
@@ -179,13 +180,32 @@ print_mod_contexts(reads[x], mods, use_strand=False)
 print(reads[x].alignment.is_reverse)
 
 win_offset = 2000
-window_offset = 1000
 filtered_reads = filter_reads_by_window(reads, win_offset)
 
 
-seq_array = build_seq_array(filtered_reads, 2000)
+seq_array = build_seq_array(filtered_reads, win_offset)
 
-cpg_array = build_mod_array(filtered_reads, 2000, mod_type=CPG_MODS)
-m6a_array = build_mod_array(filtered_reads, 2000, mod_type=M6A_MODS)
+cpg_array = build_mod_array(filtered_reads, win_offset, mod_type=CPG_MODS)
+m6a_array = build_mod_array(filtered_reads, win_offset, mod_type=M6A_MODS)
 
 bytes(seq_array[0,:]).decode('UTF-8')[350]
+
+
+
+for i in np.arange(3000,3030):
+    I = m6a_array.row[i]
+    J = m6a_array.col[i]
+    seq = bytes(seq_array[I,:]).decode('UTF-8')
+    center_pos = J
+    offset = 10
+    print(str(i)+ ":  " + seq[center_pos-offset:center_pos] + ">" + 
+          seq[center_pos:center_pos+offset+1])
+
+# -----------------------------------------------------------------------------
+
+read = reads[5]
+temp = np.array(read.alignment.modified_bases_forward[CPG_MODS[0]])
+
+
+
+
