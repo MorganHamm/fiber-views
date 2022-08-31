@@ -52,7 +52,8 @@ class GenomicPosition:
         self.strand = series.loc['strand']
         return(self)
     def __repr__(self):
-        return("A genomic position object\nseqid: {}, pos: {}, strand: {}".format(self.seqid, self.pos, self.strand))
+        return("A genomic position object\nseqid: {}, pos: {}, strand: {}"
+               .format(self.seqid, self.pos, self.strand))
     def __str__(self):
         return(self.__repr__())
     
@@ -146,18 +147,20 @@ def filter_reads_by_window(reads, window_offset):
     return([read for read in reads if read.query_position - window_offset >= 0 and 
      read.query_position + window_offset <= read.alignment.query_length])
   
-def build_seq_array(reads, window_offset):
+def build_seq_array(reads, window_offset, strand="+"):
     # create a byte array of the sequences. 
     # warning, filter reads first
     char_array = np.empty((len(reads), 2*window_offset), dtype="S1")
     for i, read in enumerate(reads):
         center_pos = read.query_position
         seq = read.alignment.query_sequence[center_pos - window_offset : center_pos + window_offset]
+        if strand == "-":
+            seq = str(Seq(seq).reverse_complement())
         char_array[i, :] = np.frombuffer(seq.encode('UTF-8'), dtype="S1")
     return(char_array)
 
 
-def build_mod_array(reads, window_offset, mod_type=M6A_MODS, sparse=True, score_cutoff=200):
+def build_mod_array(reads, window_offset, mod_type=M6A_MODS, strand="+", sparse=True, score_cutoff=200):
     I = []
     J = []
     none_count = 0
@@ -167,6 +170,8 @@ def build_mod_array(reads, window_offset, mod_type=M6A_MODS, sparse=True, score_
             none_count += 1
             continue
         mods = mods + window_offset
+        if strand == "-":
+            mods = (2*window_offset-1) - mods - 1 * (mod_type == CPG_MODS)
         mods = [mod for mod in mods if mod >= 0 and mod <= 2*window_offset-1]
         for mod in mods:
             I.append(i)
@@ -174,8 +179,7 @@ def build_mod_array(reads, window_offset, mod_type=M6A_MODS, sparse=True, score_
     V = np.ones((len(J)), dtype=bool)
     mod_mtx = coo_matrix((V, (I, J)), shape=(len(reads), 2*window_offset))
     if sparse == False:
-        mod_mtx = mod_mtx.toarray()
-            
+        mod_mtx = mod_mtx.toarray()       
     return(mod_mtx)
 
 def build_row_anno_from_reads(reads, anno_series):
@@ -191,19 +195,24 @@ def build_anndata_from_df(alignment_file, df, window_offset=1000):
     seq_mtx_list = []
     m6a_mtx_list = []
     cpg_mtx_list = []
-    
     for i, row in df.iterrows():
         reads = get_reads_at_center_pos(alignment_file, 
                                         GenomicPosition().from_series(row))
         reads = filter_reads_by_window(reads, window_offset)
         row_anno_df_list.append(build_row_anno_from_reads(reads, row))
-        seq_mtx_list.append(build_seq_array(reads, window_offset))
+        seq_mtx_list.append(build_seq_array(reads, window_offset, 
+                                            strand=row.loc['strand']))
         m6a_mtx_list.append(build_mod_array(reads, window_offset, 
-                                            mod_type=M6A_MODS, sparse=True, score_cutoff=220))
+                                            mod_type=M6A_MODS, sparse=True, 
+                                            score_cutoff=220,
+                                            strand=row.loc['strand']))
         cpg_mtx_list.append(build_mod_array(reads, window_offset, 
-                                            mod_type=CPG_MODS, sparse=True, score_cutoff=220))
+                                            mod_type=CPG_MODS, sparse=True, 
+                                            score_cutoff=220,
+                                            strand=row.loc['strand']))
     adata = ad.AnnData(vstack(m6a_mtx_list).tocsr())
     adata.layers['seq'] = np.vstack(seq_mtx_list)
+    adata.layers['m6a'] = vstack(m6a_mtx_list).tocsr()
     adata.layers['cpg'] = vstack(cpg_mtx_list).tocsr()
     adata.obs = pd.concat(row_anno_df_list)
     adata.obs_names = ["{}:{}({}) {}".format(obs_row.seqid, obs_row.pos, 
@@ -211,7 +220,6 @@ def build_anndata_from_df(alignment_file, df, window_offset=1000):
                        for i, obs_row in adata.obs.iterrows()]
     adata.var_names = np.arange(-window_offset, window_offset)
     adata.var = pd.DataFrame({"pos" : adata.var_names})
-    
     return(adata)
 
 # =============================================================================
@@ -224,15 +232,13 @@ os.chdir(os.path.expanduser("~/git/fiber_views"))
 
 bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
 
-
 anno_df = pd.DataFrame({
     "seqid" : ["chr3", "chr3", "chr3"],
-    "pos" : [2015001, 3000000, 4000000],
-    "strand" : ["+", "-", "-"],
+    "pos" : [2015001, 3000000, 3000000],
+    "strand" : ["+", "-", "+"],
     "gene_id" : ["gene_1", "gene_2", "gene_3"],
     "score" : [56, 600, 40]
     })
-
 
 
 fview = build_anndata_from_df(bamfile, anno_df)
@@ -240,13 +246,15 @@ fview = build_anndata_from_df(bamfile, anno_df)
 
 
 
+# check that cpgs are landing on Cs...
+fv2 = fview[fview.obs.gene_id == "gene_2"]
 
+seq_array = fv2.layers['seq'].copy()
 
+temp = seq_array[fv2.layers['cpg'].toarray()]
 
-
-
-
-
+for i in range(100):
+    print(temp[i])
 
 
 
@@ -309,3 +317,5 @@ row_df_dict = row.to_dict()
 vals = np.arange(9)
 row_df_dict['values'] = vals
 temp = build_row_anno_from_reads(reads, row)
+
+seq_array
