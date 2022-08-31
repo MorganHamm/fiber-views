@@ -5,10 +5,14 @@ Created on Tue Aug 30 16:05:34 2022
 
 @author: morgan
 """
+
+# TODO: make strand specific.
+# TODO: bed to df function
+
 import numpy as np
 import pandas as pd
 import anndata as ad
-from scipy.sparse import csr_matrix, coo_matrix
+from scipy.sparse import csr_matrix, coo_matrix, vstack
 print(ad.__version__)
 import pysam
 
@@ -26,18 +30,39 @@ D_TYPE = np.int64
 # CLASSES
 # =============================================================================
 
+# class GenomicPosition:
+#     def __init__(self, coord_str):
+#         [self.seqid, pos] = coord_str.split(":")
+#         self.pos = int(pos)
+
 class GenomicPosition:
-    def __init__(self, coord_str):
+    def __init__(self):
+        self.seqid = None
+        self.pos = None
+        self.strand = None
+    def from_str(self, coord_str):
         [self.seqid, pos] = coord_str.split(":")
         self.pos = int(pos)
-        
-
+        self.strand = "*"
+        return(self)
+    def from_series(self, series):
+        # like from a pandas dataframe row
+        self.seqid = series.loc['seqid']
+        self.pos = series.loc['pos']
+        self.strand = series.loc['strand']
+        return(self)
+    def __repr__(self):
+        return("A genomic position object\nseqid: {}, pos: {}, strand: {}".format(self.seqid, self.pos, self.strand))
+    def __str__(self):
+        return(self.__repr__())
+    
+    
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
 
 def get_mod_pos_from_rec(rec, mods=M6A_MODS, score_cutoff=200):
-    # from Mitchell's extract_bed_from_bam.py
+    # from Mitchell's extract_bed_from_bam.py (modified)
     # rec should be a pysam.libcalignedsegment.AlignedSegment (PileupRead.alignment)
     if rec.modified_bases_forward is None:
         return None
@@ -55,10 +80,10 @@ def get_mod_pos_from_rec(rec, mods=M6A_MODS, score_cutoff=200):
     return mod_positions
 
 
-def get_reads_at_center_pos(alignment_file, genomic_coordinate_str):
+def get_reads_at_center_pos(alignment_file, genomic_coordinate):
     # genomic coordinate should be in form "chr3:200000"
     # returns list of pysam.libcalignedsegment.PileupRead objects
-    ref_pos = GenomicPosition(genomic_coordinate_str)
+    ref_pos = genomic_coordinate
     
     pileup_iter = alignment_file.pileup(ref_pos.seqid, ref_pos.pos, ref_pos.pos +1 )  
     
@@ -98,9 +123,9 @@ def print_mod_contexts(read, mod_positions, offset=5, use_strand=True):
               seq[mod_pos:mod_pos+offset+1])
     
     
-def get_strand_correct_mods(read, mod_type=M6A_MODS, centered=False):
+def get_strand_correct_mods(read, mod_type=M6A_MODS, centered=False, score_cutoff=200):
     # get modification positions and correct them to match the forward genomic strand
-    raw_mods = get_mod_pos_from_rec(read.alignment, mods=mod_type)
+    raw_mods = get_mod_pos_from_rec(read.alignment, mods=mod_type, score_cutoff=score_cutoff)
     if raw_mods is None:
         return(None)
     if read.alignment.is_reverse:
@@ -132,13 +157,12 @@ def build_seq_array(reads, window_offset):
     return(char_array)
 
 
-def build_mod_array(reads, window_offset, mod_type=M6A_MODS, sparse=True):
+def build_mod_array(reads, window_offset, mod_type=M6A_MODS, sparse=True, score_cutoff=200):
     I = []
     J = []
     none_count = 0
     for i, read in enumerate(reads):
-        mods = get_strand_correct_mods(read, mod_type, centered=True)
-        # print(i)
+        mods = get_strand_correct_mods(read, mod_type, centered=True, score_cutoff=score_cutoff)
         if mods is None:
             none_count += 1
             continue
@@ -149,11 +173,46 @@ def build_mod_array(reads, window_offset, mod_type=M6A_MODS, sparse=True):
             J.append(mod)
     V = np.ones((len(J)), dtype=bool)
     mod_mtx = coo_matrix((V, (I, J)), shape=(len(reads), 2*window_offset))
-    print(none_count)
+    if sparse == False:
+        mod_mtx = mod_mtx.toarray()
             
     return(mod_mtx)
 
+def build_row_anno_from_reads(reads, anno_series):
+    row_data_dict = anno_series.to_dict()
+    row_data_dict['read_name'] = [read.alignment.query_name for read in reads]
+    row_data_dict['read_length'] = [read.alignment.query_length for read in reads]
+    row_data_dict['read_flag'] = [read.alignment.flag for read in reads]
+    return(pd.DataFrame(row_data_dict))
 
+
+def build_anndata_from_df(alignment_file, df, window_offset=1000):
+    row_anno_df_list = []
+    seq_mtx_list = []
+    m6a_mtx_list = []
+    cpg_mtx_list = []
+    
+    for i, row in df.iterrows():
+        reads = get_reads_at_center_pos(alignment_file, 
+                                        GenomicPosition().from_series(row))
+        reads = filter_reads_by_window(reads, window_offset)
+        row_anno_df_list.append(build_row_anno_from_reads(reads, row))
+        seq_mtx_list.append(build_seq_array(reads, window_offset))
+        m6a_mtx_list.append(build_mod_array(reads, window_offset, 
+                                            mod_type=M6A_MODS, sparse=True, score_cutoff=220))
+        cpg_mtx_list.append(build_mod_array(reads, window_offset, 
+                                            mod_type=CPG_MODS, sparse=True, score_cutoff=220))
+    adata = ad.AnnData(vstack(m6a_mtx_list).tocsr())
+    adata.layers['seq'] = np.vstack(seq_mtx_list)
+    adata.layers['cpg'] = vstack(cpg_mtx_list).tocsr()
+    adata.obs = pd.concat(row_anno_df_list)
+    adata.obs_names = ["{}:{}({}) {}".format(obs_row.seqid, obs_row.pos, 
+                                             obs_row.strand, obs_row.read_name) 
+                       for i, obs_row in adata.obs.iterrows()]
+    adata.var_names = np.arange(-window_offset, window_offset)
+    adata.var = pd.DataFrame({"pos" : adata.var_names})
+    
+    return(adata)
 
 # =============================================================================
 # MAIN/TEST CODE
@@ -166,18 +225,45 @@ os.chdir(os.path.expanduser("~/git/fiber_views"))
 bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
 
 
-reads = get_reads_at_center_pos(bamfile, "chr3:2015001")
+anno_df = pd.DataFrame({
+    "seqid" : ["chr3", "chr3", "chr3"],
+    "pos" : [2015001, 3000000, 4000000],
+    "strand" : ["+", "-", "-"],
+    "gene_id" : ["gene_1", "gene_2", "gene_3"],
+    "score" : [56, 600, 40]
+    })
+
+
+
+fview = build_anndata_from_df(bamfile, anno_df)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -----------------------------------------------------------------------------
+
+
+reads = get_reads_at_center_pos(bamfile, GenomicPosition().from_str("chr3:2015001"))
 
 print_aligned_reads(reads, offset=50)
 
 
 
-x = 50
-mod_type = M6A_MODS
-mods = get_strand_correct_mods(reads[x], mod_type)
-
-print_mod_contexts(reads[x], mods, use_strand=False)
-print(reads[x].alignment.is_reverse)
+# x = 50
+# mod_type = M6A_MODS
+# mods = get_strand_correct_mods(reads[x], mod_type)
+# print_mod_contexts(reads[x], mods, use_strand=False)
+# print(reads[x].alignment.is_reverse)
 
 win_offset = 2000
 filtered_reads = filter_reads_by_window(reads, win_offset)
@@ -185,7 +271,7 @@ filtered_reads = filter_reads_by_window(reads, win_offset)
 
 seq_array = build_seq_array(filtered_reads, win_offset)
 
-cpg_array = build_mod_array(filtered_reads, win_offset, mod_type=CPG_MODS)
+cpg_array = build_mod_array(filtered_reads, win_offset, mod_type=CPG_MODS, sparse=False)
 m6a_array = build_mod_array(filtered_reads, win_offset, mod_type=M6A_MODS)
 
 bytes(seq_array[0,:]).decode('UTF-8')[350]
@@ -206,6 +292,20 @@ for i in np.arange(3000,3030):
 read = reads[5]
 temp = np.array(read.alignment.modified_bases_forward[CPG_MODS[0]])
 
+anno_df = pd.DataFrame({
+    "seqid" : ["chr3", "chr3", "chr3"],
+    "pos" : [2015001, 3000000, 4000000],
+    "strand" : ["+", "-", "-"],
+    "gene_id" : ["gene_1", "gene_2", "gene_3"],
+    "score" : [56, 600, 40]
+    })
 
+for i, row in anno_df.iterrows():
+    print(row)
+    row.loc['seqid']
+    type(row) == pd.core.series.Series
 
-
+row_df_dict = row.to_dict()
+vals = np.arange(9)
+row_df_dict['values'] = vals
+temp = build_row_anno_from_reads(reads, row)
