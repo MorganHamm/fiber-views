@@ -210,17 +210,73 @@ def build_anndata_from_df(alignment_file, df, window_offset=1000):
                                             mod_type=CPG_MODS, sparse=True, 
                                             score_cutoff=220,
                                             strand=row.loc['strand']))
-    adata = ad.AnnData(vstack(m6a_mtx_list).tocsr())
+    adata = ad.AnnData(
+        obs=pd.concat(row_anno_df_list),
+        var=pd.DataFrame({"pos" : np.arange(-window_offset, window_offset)})
+        )
     adata.layers['seq'] = np.vstack(seq_mtx_list)
     adata.layers['m6a'] = vstack(m6a_mtx_list).tocsr()
     adata.layers['cpg'] = vstack(cpg_mtx_list).tocsr()
-    adata.obs = pd.concat(row_anno_df_list)
-    adata.obs_names = ["{}:{}({}) {}".format(obs_row.seqid, obs_row.pos, 
-                                             obs_row.strand, obs_row.read_name) 
-                       for i, obs_row in adata.obs.iterrows()]
-    adata.var_names = np.arange(-window_offset, window_offset)
-    adata.var = pd.DataFrame({"pos" : adata.var_names})
+    # adata.obs = pd.concat(row_anno_df_list)
+    # probably inefficient for large dfs
+    adata.obs['site_name'] = ["{}:{}({})".format(row.seqid, row.pos, row.strand) 
+                              for i, row in adata.obs.iterrows()]
+    # adata.obs_names = ["{} {}".format(obs_row.site_name, obs_row.read_name) 
+    #                    for i, obs_row in adata.obs.iterrows()]
+    # adata.var_names = np.arange(-window_offset, window_offset)
+    # adata.var = pd.DataFrame({"pos" : adata.var_names})
+    
     return(adata)
+
+def mark_cpg_sites(adata, sparse=True):
+    # should be a method
+    cpg_sites = np.logical_and(adata.layers['seq'][:, 0:-1] == b'C', 
+                               adata.layers['seq'][:, 1:] == b'G')
+    cpg_sites = np.pad(cpg_sites, pad_width=((0,0),(0,1)), mode='constant')
+    if sparse:
+        cpg_sites = csr_matrix(cpg_sites)
+    adata.layers['cpg_sites'] = cpg_sites
+    return(None)
+
+def collapse_anndata_by_obs(adata, obs_col_name='site_name', cols_to_keep=[]):
+    As = []
+    Cs = []
+    Gs = []
+    Ts = []
+    cpg_sites = []
+    cpgs = []
+    m6as = []
+    new_obs_rows = []
+    if not obs_col_name in cols_to_keep:
+        cols_to_keep.append(obs_col_name)
+    if not 'cpg_sites' in adata.layers.keys():
+        mark_cpg_sites(adata)
+    for obs_val in np.unique(adata.obs[obs_col_name]):
+        a_subset = adata[adata.obs[obs_col_name] == obs_val, :]
+        As.append(np.sum(a_subset.layers['seq'] == b'A', axis=0))
+        Cs.append(np.sum(a_subset.layers['seq'] == b'C', axis=0))
+        Gs.append(np.sum(a_subset.layers['seq'] == b'G', axis=0))
+        Ts.append(np.sum(a_subset.layers['seq'] == b'T', axis=0))
+        cpg_sites.append(np.sum(a_subset.layers['cpg_sites'], axis=0))
+        cpgs.append(np.sum(a_subset.layers['cpg'], axis=0))
+        m6as.append(np.sum(a_subset.layers['m6a'], axis=0))
+        # take the first row of subset.obs as new obs row
+        new_obs_row = a_subset.obs[cols_to_keep].iloc[1].copy()
+        new_obs_row['n_seqs'] = a_subset.shape[0]
+        new_obs_rows.append(new_obs_row)
+    new_adata = ad.AnnData(
+        obs=pd.DataFrame(new_obs_rows, index=str(np.arange(len(new_obs_rows)))) ,
+        var=adata.var
+        )
+    new_adata.layers['m6a'] = np.vstack(m6as)
+    new_adata.layers['cpg'] = np.vstack(cpgs)
+    new_adata.layers['A counts'] = np.vstack(As)
+    new_adata.layers['C counts'] = np.vstack(Cs)
+    new_adata.layers['G counts'] = np.vstack(Gs)
+    new_adata.layers['T counts'] = np.vstack(Ts)
+    new_adata.layers['CpG sites'] = np.vstack(cpg_sites)
+    return(new_adata)
+
 
 # =============================================================================
 # MAIN/TEST CODE
@@ -244,7 +300,7 @@ anno_df = pd.DataFrame({
 fview = build_anndata_from_df(bamfile, anno_df)
 
 
-
+summary_data = collapse_anndata_by_obs(fview, cols_to_keep=list(anno_df.keys()) )
 
 # check that cpgs are landing on Cs...
 fv2 = fview[fview.obs.gene_id == "gene_2"]
