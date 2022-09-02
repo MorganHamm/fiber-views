@@ -16,8 +16,12 @@ from scipy.sparse import csr_matrix, coo_matrix, vstack
 print(ad.__version__)
 import pysam
 
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 from Bio.Seq import Seq
 import re
+import sys
 
 
 CPG_MODS = [("C", 0, "m")]
@@ -329,11 +333,36 @@ anno_df.query('seqid == "chr3" & pos < 200000', inplace=True)
 
 fview = build_anndata_from_df(bamfile, anno_df)
 
-summary_data = collapse_anndata_by_obs(fview, cols_to_keep=list(anno_df.keys()) )
+sdata = collapse_anndata_by_obs(fview, cols_to_keep=list(anno_df.keys()) )
 
-sys.getsizeof(summary_data)
+sys.getsizeof(fview)
 
 
+# -----------------------------------------------------------------------------
+
+
+
+
+sdata.var['AT_counts'] = np.sum(sdata.layers['A counts'], axis=0).T + np.sum(sdata.layers['T counts'], axis=0).T
+
+sdata.var['CpG_counts'] = np.sum(sdata.layers['CpG sites'], axis=0).T
+
+sdata.var['m6a'] = np.sum(sdata.layers['m6a'], axis=0).T
+
+sdata.var['cpg_meth'] = np.sum(sdata.layers['cpg'], axis=0).T
+
+sdata.var['m6a_freq'] = sdata.var.m6a / sdata.var.AT_counts
+
+sdata.var['cpg_freq'] = sdata.var.cpg_meth / sdata.var.CpG_counts
+
+plot_data = sdata.var.copy()
+plot_data['bin'] = plot_data.pos // 10
+plot_data = plot_data.groupby('bin').sum()
+
+sns.relplot(data=plot_data, kind='line', 
+           x='bin', y='m6a_freq')
+
+plt.show()
 
 
 # -----------------------------------------------------------------------------
