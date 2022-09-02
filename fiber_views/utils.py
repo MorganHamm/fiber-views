@@ -81,19 +81,19 @@ def get_mod_pos_from_rec(rec, mods=M6A_MODS, score_cutoff=200):
     return mod_positions
 
 
-def get_reads_at_center_pos(alignment_file, genomic_coordinate):
-    # genomic coordinate should be in form "chr3:200000"
+def get_reads_at_center_pos(alignment_file, ref_pos):
+    # ref_pos in form of (seqid, pos, strand) ie. ('chr3', 5000, '-')
     # returns list of pysam.libcalignedsegment.PileupRead objects
-    ref_pos = genomic_coordinate
+
     
-    pileup_iter = alignment_file.pileup(ref_pos.seqid, ref_pos.pos, ref_pos.pos +1 )  
+    pileup_iter = alignment_file.pileup(ref_pos[0], ref_pos[1], ref_pos[1] +1 )  
     
     for pileup_column in pileup_iter:
-        if pileup_column.pos == ref_pos.pos:
+        if pileup_column.pos == ref_pos[1]:
             reads = [read for read in pileup_column.pileups 
                      if not read.query_position is None]
             return(reads)
-        elif pileup_column.pos > ref_pos.pos:
+        elif pileup_column.pos > ref_pos[1]:
             return(None)
     return(None)
 
@@ -199,7 +199,7 @@ def build_anndata_from_df(alignment_file, df, window_offset=1000):
     cpg_mtx_list = []
     for i, row in df.iterrows():
         reads = get_reads_at_center_pos(alignment_file, 
-                                        GenomicPosition().from_series(row))
+                                        ref_pos=(row.seqid, row.pos, row.strand))
         reads = filter_reads_by_window(reads, window_offset)
         if reads is None:
             continue
@@ -324,7 +324,7 @@ anno_df = bed_to_anno_df(bed_data)
 
 anno_df.query('seqid == "chr3" & pos < 2000000', inplace=True)
 
-
+anno_df.query('seqid == "chr3" & pos < 200000', inplace=True)
 
 
 fview = build_anndata_from_df(bamfile, anno_df)
@@ -378,7 +378,8 @@ bed_data.query('not chrom in ["chrC", "chrM"]')
 # -----------------------------------------------------------------------------
 
 
-reads = get_reads_at_center_pos(bamfile, GenomicPosition().from_str("chr3:2015001"))
+# reads = get_reads_at_center_pos(bamfile, GenomicPosition().from_str("chr3:2015001"))
+reads = get_reads_at_center_pos(bamfile, ("chr3", 2015001, '+'))
 
 print_aligned_reads(reads, offset=50)
 
