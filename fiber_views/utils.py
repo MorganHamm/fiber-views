@@ -144,6 +144,8 @@ def get_strand_correct_mods(read, mod_type=M6A_MODS, centered=False, score_cutof
   
 def filter_reads_by_window(reads, window_offset):
     # filter reads to only those that fill the window around the center position
+    if reads is None:
+        return(None)
     return([read for read in reads if read.query_position - window_offset >= 0 and 
      read.query_position + window_offset <= read.alignment.query_length])
   
@@ -199,6 +201,8 @@ def build_anndata_from_df(alignment_file, df, window_offset=1000):
         reads = get_reads_at_center_pos(alignment_file, 
                                         GenomicPosition().from_series(row))
         reads = filter_reads_by_window(reads, window_offset)
+        if reads is None:
+            continue
         row_anno_df_list.append(build_row_anno_from_reads(reads, row))
         seq_mtx_list.append(build_seq_array(reads, window_offset, 
                                             strand=row.loc['strand']))
@@ -265,7 +269,7 @@ def collapse_anndata_by_obs(adata, obs_col_name='site_name', cols_to_keep=[]):
         new_obs_row['n_seqs'] = a_subset.shape[0]
         new_obs_rows.append(new_obs_row)
     new_adata = ad.AnnData(
-        obs=pd.DataFrame(new_obs_rows, index=str(np.arange(len(new_obs_rows)))) ,
+        obs=pd.DataFrame(new_obs_rows, index=np.arange(len(new_obs_rows))) ,
         var=adata.var
         )
     new_adata.layers['m6a'] = np.vstack(m6as)
@@ -276,6 +280,28 @@ def collapse_anndata_by_obs(adata, obs_col_name='site_name', cols_to_keep=[]):
     new_adata.layers['T counts'] = np.vstack(Ts)
     new_adata.layers['CpG sites'] = np.vstack(cpg_sites)
     return(new_adata)
+
+def read_bed(bed_file):  
+    bed_data = pd.read_csv(bed_file, sep="\t", header=None)
+    BED_HEADER = ['chrom', 'start', 'end', 'name', 'score', 'strand', 'thick_start',
+                  'thick_end', 'item_rgb', 'block_count', 'block_widths', 'block_starts']
+    bed_data.set_axis(BED_HEADER[0:bed_data.shape[1]], axis=1, inplace=True)
+    return(bed_data)
+
+def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
+    anno_df = pd.DataFrame({
+        "seqid" : bed_df.chrom,
+        "pos" : bed_df.start * (bed_df.strand == "+")  + 
+        bed_df.end * (bed_df.strand == "-"),
+        "strand" : bed_df.strand,
+        entry_name_type : bed_df.name,
+        "score" : bed_df.score,
+        })
+    return(anno_df)
+
+
+
+
 
 
 # =============================================================================
@@ -288,6 +314,30 @@ os.chdir(os.path.expanduser("~/git/fiber_views"))
 
 bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
 
+
+bed_data = read_bed('local/TAIR10_genes.bed')
+
+bed_data.query('not chrom in ["chrC", "chrM"]', inplace=True)
+
+
+anno_df = bed_to_anno_df(bed_data)
+
+anno_df.query('seqid == "chr3" & pos < 2000000', inplace=True)
+
+
+
+
+fview = build_anndata_from_df(bamfile, anno_df)
+
+summary_data = collapse_anndata_by_obs(fview, cols_to_keep=list(anno_df.keys()) )
+
+sys.getsizeof(summary_data)
+
+
+
+
+# -----------------------------------------------------------------------------
+
 anno_df = pd.DataFrame({
     "seqid" : ["chr3", "chr3", "chr3"],
     "pos" : [2015001, 3000000, 3000000],
@@ -297,10 +347,7 @@ anno_df = pd.DataFrame({
     })
 
 
-fview = build_anndata_from_df(bamfile, anno_df)
 
-
-summary_data = collapse_anndata_by_obs(fview, cols_to_keep=list(anno_df.keys()) )
 
 # check that cpgs are landing on Cs...
 fv2 = fview[fview.obs.gene_id == "gene_2"]
@@ -313,6 +360,20 @@ for i in range(100):
     print(temp[i])
 
 
+
+# -----------------------------------------------------------------------------
+
+
+bed_data = read_bed('local/TAIR10_genes.bed')
+
+bed_data = bed_data.query('chrom == "chr3" & start < 2000000')
+
+anno_df = bed_to_anno_df(bed_data)
+
+anno_df = anno_df.iloc[500:,] # this will find some sites with no reads fast
+
+
+bed_data.query('not chrom in ["chrC", "chrM"]')
 
 # -----------------------------------------------------------------------------
 
