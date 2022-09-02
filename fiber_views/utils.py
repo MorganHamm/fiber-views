@@ -28,39 +28,6 @@ CPG_MODS = [("C", 0, "m")]
 M6A_MODS = [("A", 0, "a"), ("T", 1, "a")]
 D_TYPE = np.int64
 
-
-
-# =============================================================================
-# CLASSES
-# =============================================================================
-
-# class GenomicPosition:
-#     def __init__(self, coord_str):
-#         [self.seqid, pos] = coord_str.split(":")
-#         self.pos = int(pos)
-
-class GenomicPosition:
-    def __init__(self):
-        self.seqid = None
-        self.pos = None
-        self.strand = None
-    def from_str(self, coord_str):
-        [self.seqid, pos] = coord_str.split(":")
-        self.pos = int(pos)
-        self.strand = "*"
-        return(self)
-    def from_series(self, series):
-        # like from a pandas dataframe row
-        self.seqid = series.loc['seqid']
-        self.pos = series.loc['pos']
-        self.strand = series.loc['strand']
-        return(self)
-    def __repr__(self):
-        return("A genomic position object\nseqid: {}, pos: {}, strand: {}"
-               .format(self.seqid, self.pos, self.strand))
-    def __str__(self):
-        return(self.__repr__())
-    
     
 # =============================================================================
 # FUNCTIONS
@@ -87,11 +54,8 @@ def get_mod_pos_from_rec(rec, mods=M6A_MODS, score_cutoff=200):
 
 def get_reads_at_center_pos(alignment_file, ref_pos):
     # ref_pos in form of (seqid, pos, strand) ie. ('chr3', 5000, '-')
-    # returns list of pysam.libcalignedsegment.PileupRead objects
-
-    
-    pileup_iter = alignment_file.pileup(ref_pos[0], ref_pos[1], ref_pos[1] +1 )  
-    
+    # returns list of pysam.libcalignedsegment.PileupRead objects 
+    pileup_iter = alignment_file.pileup(ref_pos[0], ref_pos[1], ref_pos[1] +1 )   
     for pileup_column in pileup_iter:
         if pileup_column.pos == ref_pos[1]:
             reads = [read for read in pileup_column.pileups 
@@ -278,11 +242,11 @@ def collapse_anndata_by_obs(adata, obs_col_name='site_name', cols_to_keep=[]):
         )
     new_adata.layers['m6a'] = np.vstack(m6as)
     new_adata.layers['cpg'] = np.vstack(cpgs)
-    new_adata.layers['A counts'] = np.vstack(As)
-    new_adata.layers['C counts'] = np.vstack(Cs)
-    new_adata.layers['G counts'] = np.vstack(Gs)
-    new_adata.layers['T counts'] = np.vstack(Ts)
-    new_adata.layers['CpG sites'] = np.vstack(cpg_sites)
+    new_adata.layers['As'] = np.vstack(As)
+    new_adata.layers['Cs'] = np.vstack(Cs)
+    new_adata.layers['Gs'] = np.vstack(Gs)
+    new_adata.layers['Ts'] = np.vstack(Ts)
+    new_adata.layers['CpGs'] = np.vstack(cpg_sites)
     return(new_adata)
 
 def read_bed(bed_file):  
@@ -305,9 +269,6 @@ def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
 
 
 
-
-
-
 # =============================================================================
 # MAIN/TEST CODE
 # =============================================================================
@@ -326,9 +287,11 @@ bed_data.query('not chrom in ["chrC", "chrM"]', inplace=True)
 
 anno_df = bed_to_anno_df(bed_data)
 
-anno_df.query('seqid == "chr3" & pos < 2000000', inplace=True)
+anno_df.query('seqid == "chr3" & pos < 2000000', inplace=True) 
 
-anno_df.query('seqid == "chr3" & pos < 200000', inplace=True)
+
+# anno_df.query('seqid == "chr3"', inplace=True) 
+# anno_df.query('seqid == "chr3" & pos < 200000', inplace=True)
 
 
 fview = build_anndata_from_df(bamfile, anno_df)
@@ -343,24 +306,24 @@ sys.getsizeof(fview)
 
 
 
-sdata.var['AT_counts'] = np.sum(sdata.layers['A counts'], axis=0).T + np.sum(sdata.layers['T counts'], axis=0).T
+sdata.var['ATs'] = np.sum(sdata.layers['As'], axis=0).T + np.sum(sdata.layers['Ts'], axis=0).T
 
-sdata.var['CpG_counts'] = np.sum(sdata.layers['CpG sites'], axis=0).T
+sdata.var['CpGs'] = np.sum(sdata.layers['CpGs'], axis=0).T
 
 sdata.var['m6a'] = np.sum(sdata.layers['m6a'], axis=0).T
 
-sdata.var['cpg_meth'] = np.sum(sdata.layers['cpg'], axis=0).T
+sdata.var['cpg'] = np.sum(sdata.layers['cpg'], axis=0).T
 
-sdata.var['m6a_freq'] = sdata.var.m6a / sdata.var.AT_counts
+sdata.var['m6a_freq'] = sdata.var.m6a / sdata.var.ATs
 
-sdata.var['cpg_freq'] = sdata.var.cpg_meth / sdata.var.CpG_counts
+sdata.var['cpg_freq'] = sdata.var.cpg / sdata.var.CpGs
 
 plot_data = sdata.var.copy()
 plot_data['bin'] = plot_data.pos // 10
 plot_data = plot_data.groupby('bin').sum()
 
 sns.relplot(data=plot_data, kind='line', 
-           x='bin', y='m6a_freq')
+           x='bin', y='cpg_freq')
 
 plt.show()
 
