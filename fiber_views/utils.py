@@ -123,6 +123,8 @@ class ReadList(list):
                   seq[center_pos:center_pos+offset+1])
         
 
+
+
     
     
 # =============================================================================
@@ -261,7 +263,8 @@ def collapse_anndata_by_obs(adata, obs_col_name='site_name', cols_to_keep=[]):
     new_adata.layers['CpGs'] = np.vstack(cpg_sites)
     return(new_adata)
 
-def read_bed(bed_file):  
+def read_bed(bed_file): 
+    # bed file should follow bed standard and not include column names
     bed_data = pd.read_csv(bed_file, sep="\t", header=None)
     BED_HEADER = ['chrom', 'start', 'end', 'name', 'score', 'strand', 'thick_start',
                   'thick_end', 'item_rgb', 'block_count', 'block_widths', 'block_starts']
@@ -290,6 +293,10 @@ import os
 os.chdir(os.path.expanduser("~/git/fiber_views"))
 
 bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
+
+# if on  cluster: 
+# bamfile = pysam.AlignmentFile(
+#     "/net/trapnell/vol1/home/mhamm/fiber_seq/nobackup/fiberseq-smk/results/PS00137/aligned_TAIR10/aligned.fiberseq.bam", "rb")
 
 
 bed_data = read_bed('local/TAIR10_genes.bed')
@@ -331,6 +338,8 @@ sdata.var['cpg_freq'] = sdata.var.cpg / sdata.var.CpGs
 plot_data = sdata.var.copy()
 plot_data['bin'] = plot_data.pos // 10
 plot_data = plot_data.groupby('bin').sum()
+plot_data.cpg_freq = plot_data.cpg / plot_data.CpGs
+plot_data.m6a_freq = plot_data.m6a / plot_data.ATs
 
 sns.relplot(data=plot_data, kind='line', 
            x='bin', y='m6a_freq')
