@@ -107,3 +107,23 @@ class FiberView(ad.AnnData):
         new_adata.layers['CpGs'] = np.vstack(cpg_sites)
         return(new_adata)
 
+
+def ad2fv(ad_object):
+    # converts an AnnData object to FiberView, in place and returns the object.
+    assert type(ad_object) == ad.AnnData, \
+           "expected object of type AnnData, got {}".format(type(ad_object)) 
+    # add checks for expected fields/layers here
+    ad_object.__class__ = FiberView
+    return(ad_object)
+
+def read_h5ad(filename, backed=None, as_sparse=(), 
+              as_sparse_fmt=csr_matrix, 
+              chunk_size=6000):
+    # wrapper around anndata.read_h5ad to return a FiberView object
+    adata = ad.read_h5ad(filename=filename,
+                         backed=backed,
+                         as_sparse=as_sparse,
+                         as_sparse_fmt = as_sparse_fmt,
+                         chunk_size=chunk_size)
+    return(ad2fv(adata))
+

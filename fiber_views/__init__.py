@@ -5,5 +5,5 @@ __email__ = 'mhamm@uw.edu'
 __version__ = '0.1.0'
 
 
-from .fiber_views import FiberView
+from .fiber_views import FiberView, ad2fv, read_h5ad
 from .utils import read_bed, bed_to_anno_df

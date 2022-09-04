@@ -80,3 +80,61 @@ sns.relplot(data=plot_data, kind='line',
            x='bin', y='cpg_freq')
 
 plt.show()
+
+# sdata.layers['cpg_freq'] = 
+
+sns.heatmap(data=sdata.layers['m6a'])
+
+# -----------------------------------------------------------------------------
+# tile plot with bases
+# slow, limit to ~40 x 100
+
+fv2 = fview[fview.obs.gene_id == "AT3G01480", 200:400][30:70, ]
+
+from matplotlib.colors import LinearSegmentedColormap
+
+fv2.layers['mods'] = fv2.layers['m6a'].toarray() + fv2.layers['cpg'].toarray() * 2
+
+myColors = ((0.65, 0.65, 0.65, 1.0), (0.78, 0.243, 0.725, 1.0), (0.78, 0.243, 0.243, 1.0))
+cmap = LinearSegmentedColormap.from_list('Custom', myColors, len(myColors))
+
+ax = sns.heatmap(fv2.layers['mods'], cmap=cmap, 
+                 annot=fv2.layers['seq'].astype('U1'), fmt = '', 
+                 annot_kws={'size' : 8})
+
+
+colorbar = ax.collections[0].colorbar
+colorbar.set_ticks([1./3, 1, 5./3])
+colorbar.set_ticklabels(['NA', 'm6A', '5mC'])
+
+# ax.hlines(np.arange(40), *ax.get_xlim(), colors=[(1.0, 1.0, 1.0)],
+#           linewidths = 2.5)
+
+ax.hlines(np.arange(40), 0, 300, colors=[(1.0, 1.0, 1.0)],
+          linewidths = 2.5)
+
+
+# -----------------------------------------------------------------------------
+# tile plot no bases
+
+fv2 = fview[fview.obs.gene_id == "AT3G01480", 200:1800]
+
+from matplotlib.colors import LinearSegmentedColormap
+
+fv2.layers['mods'] = fv2.layers['m6a'].toarray() + fv2.layers['cpg'].toarray() * 2
+
+myColors = ((0.65, 0.65, 0.65, 1.0), (0.78, 0.243, 0.725, 1.0), (0.97, 0.097, 0.0, 1.0))
+cmap = LinearSegmentedColormap.from_list('Custom', myColors, len(myColors))
+
+ax = sns.heatmap(fv2.layers['mods'], cmap=cmap)
+
+
+colorbar = ax.collections[0].colorbar
+colorbar.set_ticks([1./3, 1, 5./3])
+colorbar.set_ticklabels(['NA', 'm6A', '5mC'])
+
+# ax.hlines(np.arange(40), *ax.get_xlim(), colors=[(1.0, 1.0, 1.0)],
+#           linewidths = 2.5)
+
+ax.hlines(np.arange(fv2.shape[0]), 0, fv2.shape[1]+5, colors=[(1.0, 1.0, 1.0)],
+          linewidths = .5)

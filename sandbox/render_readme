@@ -1,0 +1,3 @@
+
+# from project dir:
+rst2html.py README.rst > ./local/README.html
