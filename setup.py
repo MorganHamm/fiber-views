@@ -28,7 +28,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
     ],
-    description="a python package for extracting and manipulating "views" of Fiber-seq data",
+    description='a python package for extracting and manipulating "views" of Fiber-seq data',
     entry_points={
         'console_scripts': [
             'fiber_views=fiber_views.cli:main',

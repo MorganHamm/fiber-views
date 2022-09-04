@@ -11,15 +11,9 @@ import numpy as np
 import pandas as pd
 import anndata as ad
 from scipy.sparse import csr_matrix, coo_matrix, vstack
-print(ad.__version__)
 import pysam
-
-import seaborn as sns
-import matplotlib.pyplot as plt
-
 from Bio.Seq import Seq
-# import re
-import sys
+
 
 
 CPG_MODS = [("C", 0, "m")]
@@ -112,6 +106,9 @@ class ReadList(list):
         row_data_dict['read_name'] = [read.alignment.query_name for read in self]
         row_data_dict['read_length'] = [read.alignment.query_length for read in self]
         row_data_dict['read_flag'] = [read.alignment.flag for read in self]
+        row_data_dict['site_name'] = "{}:{}({})".format(anno_series.seqid, 
+                                                        anno_series.pos, 
+                                                        anno_series.strand)
         return(pd.DataFrame(row_data_dict))
     def print_aligned_centers(self, offset=5):
         # test function to make sure reads are aligning correctly
@@ -289,78 +286,84 @@ def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
 # =============================================================================
 
 
-import os
-os.chdir(os.path.expanduser("~/git/fiber_views"))
-
-bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
-
-# if on  cluster: 
-# bamfile = pysam.AlignmentFile(
-#     "/net/trapnell/vol1/home/mhamm/fiber_seq/nobackup/fiberseq-smk/results/PS00137/aligned_TAIR10/aligned.fiberseq.bam", "rb")
-
-
-bed_data = read_bed('local/TAIR10_genes.bed')
-# bed_data.query('not chrom in ["chrC", "chrM"]', inplace=True)
-
-
-anno_df = bed_to_anno_df(bed_data)
-anno_df.query('seqid == "chr3" & pos < 2000000', inplace=True) 
-
-
-# anno_df.query('seqid == "chr3"', inplace=True) 
-# anno_df.query('seqid == "chr3" & pos < 200000', inplace=True)
-
-
-fview = build_anndata_from_df(bamfile, anno_df)
-
-sdata = collapse_anndata_by_obs(fview, cols_to_keep=list(anno_df.keys()) )
-
-sys.getsizeof(fview)
+if __name__ == "__main__":
+    
+    import os
+    import sys
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    
+    os.chdir(os.path.expanduser("~/git/fiber_views"))
+    
+    bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
+    
+    # if on  cluster: 
+    # bamfile = pysam.AlignmentFile(
+    #     "/net/trapnell/vol1/home/mhamm/fiber_seq/nobackup/fiberseq-smk/results/PS00137/aligned_TAIR10/aligned.fiberseq.bam", "rb")
+    
+    
+    bed_data = read_bed('local/TAIR10_genes.bed')
+    # bed_data.query('not chrom in ["chrC", "chrM"]', inplace=True)
+    
+    
+    anno_df = bed_to_anno_df(bed_data)
+    anno_df.query('seqid == "chr3" & pos < 2000000', inplace=True) 
+    
+    
+    # anno_df.query('seqid == "chr3"', inplace=True) 
+    # anno_df.query('seqid == "chr3" & pos < 200000', inplace=True)
+    
+    
+    fview = build_anndata_from_df(bamfile, anno_df)
+    
+    sdata = collapse_anndata_by_obs(fview, cols_to_keep=list(anno_df.keys()) )
+    
+    sys.getsizeof(fview)
 
 
 # -----------------------------------------------------------------------------
 # 
 
-
-
-sdata.var['ATs'] = np.sum(sdata.layers['As'], axis=0).T + np.sum(sdata.layers['Ts'], axis=0).T
-
-sdata.var['CpGs'] = np.sum(sdata.layers['CpGs'], axis=0).T
-
-sdata.var['m6a'] = np.sum(sdata.layers['m6a'], axis=0).T
-
-sdata.var['cpg'] = np.sum(sdata.layers['cpg'], axis=0).T
-
-sdata.var['m6a_freq'] = sdata.var.m6a / sdata.var.ATs
-
-sdata.var['cpg_freq'] = sdata.var.cpg / sdata.var.CpGs
-
-plot_data = sdata.var.copy()
-plot_data['bin'] = plot_data.pos // 10
-plot_data = plot_data.groupby('bin').sum()
-plot_data.cpg_freq = plot_data.cpg / plot_data.CpGs
-plot_data.m6a_freq = plot_data.m6a / plot_data.ATs
-
-sns.relplot(data=plot_data, kind='line', 
-           x='bin', y='m6a_freq')
-
-plt.show()
+    
+    
+    sdata.var['ATs'] = np.sum(sdata.layers['As'], axis=0).T + np.sum(sdata.layers['Ts'], axis=0).T
+    
+    sdata.var['CpGs'] = np.sum(sdata.layers['CpGs'], axis=0).T
+    
+    sdata.var['m6a'] = np.sum(sdata.layers['m6a'], axis=0).T
+    
+    sdata.var['cpg'] = np.sum(sdata.layers['cpg'], axis=0).T
+    
+    sdata.var['m6a_freq'] = sdata.var.m6a / sdata.var.ATs
+    
+    sdata.var['cpg_freq'] = sdata.var.cpg / sdata.var.CpGs
+    
+    plot_data = sdata.var.copy()
+    plot_data['bin'] = plot_data.pos // 10
+    plot_data = plot_data.groupby('bin').sum()
+    plot_data.cpg_freq = plot_data.cpg / plot_data.CpGs
+    plot_data.m6a_freq = plot_data.m6a / plot_data.ATs
+    
+    sns.relplot(data=plot_data, kind='line', 
+               x='bin', y='m6a_freq')
+    
+    plt.show()
 
 
 # -----------------------------------------------------------------------------
 # check that cpgs are landing on Cs...
 
-fv2 = fview[fview.obs.gene_id == "AT3G01510"]
-
-seq_array = fv2.layers['seq'].copy()
-
-temp = seq_array[fv2.layers['cpg'].toarray()]
-for i in range(100):
-    print(temp[i])
-
-temp = seq_array[fv2.layers['m6a'].toarray()]
-for i in range(100):
-    print(temp[i])
+    fv2 = fview[fview.obs.gene_id == "AT3G01510"]
+    
+    seq_array = fv2.layers['seq'].copy()
+    
+    temp = seq_array[fv2.layers['cpg'].toarray()]
+    for i in range(100):
+        print(temp[i])
+    
+    temp = seq_array[fv2.layers['m6a'].toarray()]
+    for i in range(100):
+        print(temp[i])
 
 
 # -----------------------------------------------------------------------------
