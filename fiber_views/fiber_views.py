@@ -107,27 +107,3 @@ class FiberView(ad.AnnData):
         new_adata.layers['CpGs'] = np.vstack(cpg_sites)
         return(new_adata)
 
-
-
-if __name__ == "__main__":
-    import os
-    import sys
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    from .utils import read_bed, bed_to_anno_df
-    
-    
-    
-    os.chdir(os.path.expanduser("~/git/fiber_views"))
-    
-    bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
-    
-    bed_data = read_bed('local/TAIR10_genes.bed')
-    # bed_data.query('not chrom in ["chrC", "chrM"]', inplace=True)
-    
-    
-    anno_df = bed_to_anno_df(bed_data)
-    anno_df.query('seqid == "chr3" & pos < 200000', inplace=True) 
-    fview = FiberView(bamfile, anno_df)
-    
-    sdata = fview.summarize_by_obs(cols_to_keep=list(anno_df.keys()))
