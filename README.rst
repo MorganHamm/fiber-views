@@ -20,17 +20,18 @@ a python package for extracting and manipulating "views" of Fiber-seq data
 
 
 * Free software: MIT license
-# * Documentation: https://fiber-views.readthedocs.io.
+* Documentation: https://fiber-views.readthedocs.io.
 
 Install
 -------
 
 current install method: 
-``
-git clone https://github.com/MorganHamm/fiber_views.git
-cd fiber_views
-pip install -e .
-``
+::
+
+    git clone https://github.com/MorganHamm/fiber_views.git
+    cd fiber_views
+    pip install -e .
+
 
 
 Features
