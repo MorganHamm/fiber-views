@@ -24,6 +24,11 @@ from scipy.spatial import distance
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.cluster import hierarchy
 
+from Bio.Align import MultipleSeqAlignment
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO
+
 os.chdir(os.path.expanduser("~/git/fiber_views"))
 
 
@@ -57,6 +62,14 @@ def calc_kmer_dist(fiber_view, metric='euclidean'):
     fiber_view.obsp['kmer_dist'] = distance.squareform(dists)
     return(None)
 
+def get_seq_records(fiber_view, id_col="read_name"):
+    seqs = [Seq(bytes(row)) for row in fv2.layers['seq']]
+    seq_records = []
+    for i in range(fiber_view.shape[0]):
+        seq_records.append( SeqRecord(seqs[i], id=fiber_view.obs[id_col][i], 
+                                      description=fiber_view.obs.index[i]) )
+    return(seq_records)
+
 
 count_kmers(fv2, k=6)
 
@@ -70,6 +83,12 @@ dendrogram(Z)
 
 fv2 = fv2[hierarchy.leaves_list(Z), :] # re-order rows to match dendrogram
 
+fv2.obs['unique_id']  = [str(idx) + ":" + read_name for (idx, read_name) in \
+                         zip(fv2.obs.index, fv2.obs['read_name'])]
+
+seqs = get_seq_records(fv2, id_col='unique_id')
+
+SeqIO.write(seqs, 'local/chr3:51583.fa', 'fasta')
 # -----------------------------------------------------------------------------
 # junk 
 
