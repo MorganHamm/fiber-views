@@ -8,7 +8,8 @@ import pandas as pd
 import anndata as ad
 from scipy.sparse import csr_matrix, coo_matrix, vstack
 import pysam
-# from Bio.Seq import Seq
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 from . import utils
 
@@ -106,6 +107,13 @@ class FiberView(ad.AnnData):
         new_adata.layers['Ts'] = np.vstack(Ts)
         new_adata.layers['CpGs'] = np.vstack(cpg_sites)
         return(new_adata)
+    def get_seq_records(self, id_col="read_name"):
+        seqs = [Seq(bytes(row)) for row in self.layers['seq']]
+        seq_records = []
+        for i in range(self.shape[0]):
+            seq_records.append( SeqRecord(seqs[i], id=self.obs[id_col][i], 
+                                          description=self.obs.index[i]) )
+        return(seq_records)
 
 
 def ad2fv(ad_object):
