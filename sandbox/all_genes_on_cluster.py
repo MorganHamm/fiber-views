@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 
 import os
-import sys
 import time
 import fiber_views as fv
 import pysam
@@ -44,4 +43,6 @@ end_time = time.time()
 
 print("time to summarize: {} minutes".format( (end_time - start_time)/60  ))
 
-fview.write_h5ad()
+fview.write_h5ad("local/all_genes.h5ad")
+
+sdata.write_h5ad("local/all_genes_summary.h5ad")

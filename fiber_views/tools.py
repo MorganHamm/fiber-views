@@ -33,6 +33,8 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
+from matplotlib.colors import LinearSegmentedColormap
+
 
 # =============================================================================
 # KMER COUNTING
@@ -77,7 +79,8 @@ def plot_methylation(fiber_view, label_bases=False, ):
     mod_colors = ((0.65,    0.65,   0.65,   1.0), # grey, unmetthylated
                   (0.78,    0.243,  0.725,  1.0), # purple m6a
                   (0.78,    0.243,  0.243,  1.0)) # red, cpg
-    cmap = LinearSegmentedColormap.from_list('Custom', mod_colors, len(mod_colors))
+    cmap = LinearSegmentedColormap.from_list('Custom', mod_colors, 
+                                             len(mod_colors))
     
     if label_bases:
         ax = sns.heatmap(mod_mtx, cmap=cmap, 

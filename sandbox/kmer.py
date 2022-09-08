@@ -40,7 +40,7 @@ dendrogram(Z)
 
 
 # re-order fiber view rows to match dendrogram
-fv2 = fv2[hierarchy.leaves_list(Z), :] 
+fv2 = fv.ad2fv(fv2[hierarchy.leaves_list(Z), :] )
 fv.tools.plot_methylation(fv2)
 
 
