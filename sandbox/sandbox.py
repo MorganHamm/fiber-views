@@ -83,3 +83,22 @@ plt.show()
 
 sns.heatmap(data=sdata.layers['m6a'])
 
+# -----------------------------------------------------------------------------
+
+import anndata as ad
+from scipy.sparse import csr_matrix
+
+import os
+os.chdir(os.path.expanduser("~/git/fiber_views"))
+
+sdata = ad.read_h5ad("local/all_genes_summary.h5ad")
+fview = ad.read_h5ad("local/all_genes.h5ad", backed='r')
+fview = fv.read_h5ad("local/all_genes.h5ad")
+
+subset = fview[any(fview.obs.gene_id == 'AT1G31358' , fview.obs.gene_id =='AT1G33990'), ]
+
+sdata = subset.summarize_by_obs(cols_to_keep=list(anno_df.keys()))
+
+layers = list(sdata.layers.keys())
+for layer in layers:
+    sdata.layers[layer] = np.asarray(sdata.layers[layer])

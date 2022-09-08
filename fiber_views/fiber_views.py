@@ -44,10 +44,12 @@ class FiberView(ad.AnnData):
             cpg_mtx_list.append(reads.build_mod_array(window_offset,
                                                       mod_type=CPG_MODS, sparse=True, 
                                                       score_cutoff=220))
+            
         super().__init__(
             obs=pd.concat(row_anno_df_list),
             var=pd.DataFrame({"pos" : np.arange(-window_offset, window_offset)})
             )
+        self.X = csr_matrix(self.shape) # empty matrix, needed for AnnData.to_memory()
         self.layers['seq'] = np.vstack(seq_mtx_list)
         self.layers['m6a'] = vstack(m6a_mtx_list).tocsr()
         self.layers['cpg'] = vstack(cpg_mtx_list).tocsr()
@@ -99,13 +101,15 @@ class FiberView(ad.AnnData):
             obs=pd.DataFrame(new_obs_rows, index=np.arange(len(new_obs_rows))) ,
             var=self.var
             )
-        new_adata.layers['m6a'] = np.vstack(m6as)
-        new_adata.layers['cpg'] = np.vstack(cpgs)
-        new_adata.layers['As'] = np.vstack(As)
-        new_adata.layers['Cs'] = np.vstack(Cs)
-        new_adata.layers['Gs'] = np.vstack(Gs)
-        new_adata.layers['Ts'] = np.vstack(Ts)
-        new_adata.layers['CpGs'] = np.vstack(cpg_sites)
+        # added np.asarray() because I was getting np.matrix objects in the layers
+        # for the dataset of all genes.
+        new_adata.layers['m6a'] = np.asarray(np.vstack(m6as))
+        new_adata.layers['cpg'] = np.asarray(np.vstack(cpgs))
+        new_adata.layers['As'] = np.asarray(np.vstack(As))
+        new_adata.layers['Cs'] = np.asarray(np.vstack(Cs))
+        new_adata.layers['Gs'] = np.asarray(np.vstack(Gs))
+        new_adata.layers['Ts'] = np.asarray(np.vstack(Ts))
+        new_adata.layers['CpGs'] = np.asarray(np.vstack(cpg_sites))
         return(new_adata)
     def get_seq_records(self, id_col="read_name"):
         seqs = [Seq(bytes(row)) for row in self.layers['seq']]

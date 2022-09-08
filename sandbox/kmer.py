@@ -21,10 +21,13 @@ os.chdir(os.path.expanduser("~/git/fiber_views"))
 fview = fv.read_h5ad("local/test_fiberview.h5ad")
 
 
+
 fv2 = fv.ad2fv(fview[fview.obs.gene_id == "AT3G01480", ])
 
 fv2 = fv.ad2fv(fview[fview.obs.gene_id == "AT3G01150", ]) # this one has 2 clusters
 
+
+fv2 = fv.ad2fv(fview[fview.obs.gene_id == "AT3G01085", ])
 
 
 
