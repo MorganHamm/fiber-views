@@ -38,7 +38,8 @@ class ReadList(list):
     def get_reads(self, alignment_file, ref_pos):
         """Example: reads=ReadList().get_reads(bamfile, ('chr3', 200000, '+'))
         """
-        pileup_iter = alignment_file.pileup(ref_pos[0], ref_pos[1], ref_pos[1] +1 )   
+        pileup_iter = alignment_file.pileup(ref_pos[0], ref_pos[1], ref_pos[1] +1 )  
+        reads = []
         for pileup_column in pileup_iter:
             if pileup_column.pos == ref_pos[1]:
                 reads = [read for read in pileup_column.pileups 
