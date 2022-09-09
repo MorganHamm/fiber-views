@@ -68,8 +68,6 @@ def calc_kmer_dist(fiber_view, metric='cityblock'):
 # PLOTTING
 # =============================================================================
 
-from matplotlib.colors import LinearSegmentedColormap
-
 
 def plot_methylation(fiber_view, label_bases=False, ):
     mod_mtx = fiber_view.layers['m6a'].toarray() + \

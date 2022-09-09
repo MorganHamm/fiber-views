@@ -30,6 +30,8 @@ current install method:
 
     git clone https://github.com/MorganHamm/fiber_views.git
     cd fiber_views
+    conda env create --file=envs/env.yml
+    conda activate fiber-views
     pip install -e .
 
 

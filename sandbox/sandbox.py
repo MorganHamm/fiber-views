@@ -70,9 +70,4 @@ fv.tools.plot_summary(sdata[sdata.obs.log_score < 2]) # about lower 30%
 
 fv.tools.plot_summary(sdata[sdata.obs.log_score > 2.95]) # about uper 30%
 
-layers = list(sdata.layers.keys())
-for layer in layers:
-    sdata.layers[layer] = np.asarray(sdata.layers[layer])
-
-
 # -----------------------------------------------------------------------------
