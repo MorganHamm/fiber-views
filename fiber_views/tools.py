@@ -72,30 +72,44 @@ from matplotlib.colors import LinearSegmentedColormap
 
 
 def plot_methylation(fiber_view, label_bases=False, ):
-
     mod_mtx = fiber_view.layers['m6a'].toarray() + \
         fiber_view.layers['cpg'].toarray() * 2
-    
     mod_colors = ((0.65,    0.65,   0.65,   1.0), # grey, unmetthylated
                   (0.78,    0.243,  0.725,  1.0), # purple m6a
                   (0.78,    0.243,  0.243,  1.0)) # red, cpg
     cmap = LinearSegmentedColormap.from_list('Custom', mod_colors, 
                                              len(mod_colors))
-    
     if label_bases:
         ax = sns.heatmap(mod_mtx, cmap=cmap, 
                          annot=fiber_view.layers['seq'].astype('U1'), fmt = '', 
                          annot_kws={'size' : 8})
     else:
         ax = sns.heatmap(mod_mtx, cmap=cmap)
-
     colorbar = ax.collections[0].colorbar
     colorbar.set_ticks([1./3, 1, 5./3])
     colorbar.set_ticklabels(['NA', 'm6A', '5mC'])
-
     ax.hlines(np.arange(mod_mtx.shape[0]), 0, mod_mtx.shape[1], colors=[(1.0, 1.0, 1.0)],
               linewidths = 1)
     return(ax)
 
 
+def plot_summary(sdata, bin_width=10):
+    # TODO: make this better
+    sdata.var['ATs'] = np.sum(sdata.layers['As'], axis=0).T + np.sum(sdata.layers['Ts'], axis=0).T    
+    sdata.var['CpGs'] = np.sum(sdata.layers['CpGs'], axis=0).T  
+    sdata.var['m6a'] = np.sum(sdata.layers['m6a'], axis=0).T   
+    sdata.var['cpg'] = np.sum(sdata.layers['cpg'], axis=0).T
+    sdata.var['m6a_freq'] = sdata.var.m6a / sdata.var.ATs 
+    sdata.var['cpg_freq'] = sdata.var.cpg / sdata.var.CpGs
+    
+    plot_data = sdata.var.copy()
+    plot_data['bin'] = plot_data.pos  // bin_width
+    plot_data = plot_data.groupby('bin').sum()
+    plot_data.pos = plot_data.pos / bin_width
+    plot_data.cpg_freq = (plot_data.cpg / plot_data.CpGs) * 0.2
+    plot_data.m6a_freq = plot_data.m6a / plot_data.ATs
+    long_df = plot_data.melt(id_vars=['pos'])
+    long_df = long_df.loc[(long_df['variable'] == 'm6a_freq') | (long_df['variable'] == 'cpg_freq')]
+
+    sns.lineplot(data=long_df, x='pos', y='value', hue='variable')
 

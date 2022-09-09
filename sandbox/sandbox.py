@@ -14,9 +14,12 @@ import matplotlib.pyplot as plt
 import fiber_views as fv
 import pysam
 
-
-
 os.chdir(os.path.expanduser("~/git/fiber_views"))
+
+
+# -----------------------------------------------------------------------------
+# basic reading from bam file and summarizing 
+
 
 bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
 
@@ -47,58 +50,29 @@ for i in range(100):
     print(temp[i])
 
 
-# -----------------------------------------------------------------------------
-# Try plotting summarized data
-
-
-sdata.var['ATs'] = np.sum(sdata.layers['As'], axis=0).T + np.sum(sdata.layers['Ts'], axis=0).T
-
-sdata.var['CpGs'] = np.sum(sdata.layers['CpGs'], axis=0).T
-
-sdata.var['m6a'] = np.sum(sdata.layers['m6a'], axis=0).T
-
-sdata.var['cpg'] = np.sum(sdata.layers['cpg'], axis=0).T
-
-sdata.var['m6a_freq'] = sdata.var.m6a / sdata.var.ATs
-
-sdata.var['cpg_freq'] = sdata.var.cpg / sdata.var.CpGs
-
-plot_data = sdata.var.copy()
-plot_data['bin'] = plot_data.pos // 10
-plot_data = plot_data.groupby('bin').sum()
-plot_data.cpg_freq = plot_data.cpg / plot_data.CpGs
-plot_data.m6a_freq = plot_data.m6a / plot_data.ATs
-
-sns.relplot(data=plot_data, kind='line', 
-           x='bin', y='m6a_freq')
-
-plt.show()
-
-sns.relplot(data=plot_data, kind='line', 
-           x='bin', y='cpg_freq')
-
-plt.show()
-
-# sdata.layers['cpg_freq'] = 
-
-sns.heatmap(data=sdata.layers['m6a'])
 
 # -----------------------------------------------------------------------------
+# making summary plots with percent methylated sites
 
-import anndata as ad
-from scipy.sparse import csr_matrix
 
-import os
-os.chdir(os.path.expanduser("~/git/fiber_views"))
+sdata = fv.read_h5ad("local/all_genes_summary.h5ad")
 
-sdata = ad.read_h5ad("local/all_genes_summary.h5ad")
-fview = ad.read_h5ad("local/all_genes.h5ad", backed='r')
-fview = fv.read_h5ad("local/all_genes.h5ad")
 
-subset = fview[any(fview.obs.gene_id == 'AT1G31358' , fview.obs.gene_id =='AT1G33990'), ]
+sdata = sdata[~sdata.obs.score.isnull(), ]
+sdata.obs['log_score'] = np.log10(sdata.obs.score)
+sdata = sdata[sdata.obs.n_seqs < 500, ]
 
-sdata = subset.summarize_by_obs(cols_to_keep=list(anno_df.keys()))
+sns.histplot(data=sdata.obs, x='log_score')
+
+fv.tools.plot_summary(sdata)
+
+fv.tools.plot_summary(sdata[sdata.obs.log_score < 2]) # about lower 30%
+
+fv.tools.plot_summary(sdata[sdata.obs.log_score > 2.95]) # about uper 30%
 
 layers = list(sdata.layers.keys())
 for layer in layers:
     sdata.layers[layer] = np.asarray(sdata.layers[layer])
+
+
+# -----------------------------------------------------------------------------
