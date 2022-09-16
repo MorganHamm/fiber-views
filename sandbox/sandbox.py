@@ -29,7 +29,8 @@ bed_data = fv.read_bed('local/TAIR10_genes.bed')
 
 anno_df = fv.bed_to_anno_df(bed_data)
 anno_df.query('seqid == "chr3" & pos < 200000', inplace=True) 
-fview = fv.FiberView(bamfile, anno_df)
+fview = fv.FiberView(bamfile, anno_df.iloc[0:1,:])
+
 
 sdata = fview.summarize_by_obs(cols_to_keep=list(anno_df.keys()))
 
@@ -71,3 +72,12 @@ fv.tools.plot_summary(sdata[sdata.obs.log_score < 2]) # about lower 30%
 fv.tools.plot_summary(sdata[sdata.obs.log_score > 2.95]) # about uper 30%
 
 # -----------------------------------------------------------------------------
+# testing regions (nucleosomes and msps)
+
+fview = fv.FiberView(bamfile, anno_df.iloc[2:6,:])
+
+temp = fview.layers['msp'].toarray()
+sns.heatmap(temp)
+
+
+

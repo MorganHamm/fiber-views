@@ -30,7 +30,10 @@ class FiberView(ad.AnnData):
         seq_mtx_list = []
         m6a_mtx_list = []
         cpg_mtx_list = []
+        nuc_mtx_list = []
+        msp_mtx_list = []
         for i, row in df.iterrows():
+            print(i)
             reads = utils.ReadList().get_reads(alignment_file, 
                                          ref_pos=(row.seqid, row.pos, row.strand))
             reads.filter_by_window(window_offset, inplace=True)
@@ -44,6 +47,10 @@ class FiberView(ad.AnnData):
             cpg_mtx_list.append(reads.build_mod_array(window_offset,
                                                       mod_type=CPG_MODS, sparse=True, 
                                                       score_cutoff=220))
+            nuc_mtx_list.append(reads.build_region_array(window_offset,
+                                                          tags=('ns', 'nl') ))
+            msp_mtx_list.append(reads.build_region_array(window_offset,
+                                                          tags=('as', 'al') ))
             
         super().__init__(
             obs=pd.concat(row_anno_df_list),
@@ -53,6 +60,8 @@ class FiberView(ad.AnnData):
         self.layers['seq'] = np.vstack(seq_mtx_list)
         self.layers['m6a'] = vstack(m6a_mtx_list).tocsr()
         self.layers['cpg'] = vstack(cpg_mtx_list).tocsr()
+        self.layers['nuc'] = vstack(nuc_mtx_list)
+        self.layers['msp'] = vstack(msp_mtx_list)
         # self.obs['site_name'] = ["{}:{}({})".format(row.seqid, row.pos, row.strand) 
         #                           for i, row in self.obs.iterrows()]
         if mark_cpgs:

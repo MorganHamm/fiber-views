@@ -9,6 +9,8 @@ Created on Tue Aug 30 16:05:34 2022
 
 import numpy as np
 import pandas as pd
+from itertools import repeat
+
 import anndata as ad
 from scipy.sparse import csr_matrix, coo_matrix, vstack
 import pysam
@@ -83,12 +85,12 @@ class ReadList(list):
             strand = self.strand
         I = []
         J = []
-        none_count = 0
+        none_count = 0 # for debug
         for i, read in enumerate(self):
             mods = get_strand_correct_mods(read, mod_type, centered=True, 
                                            score_cutoff=score_cutoff)
             if mods is None:
-                none_count += 1
+                none_count += 1 # for debug
                 continue
             mods = mods + window_offset
             if strand == "-":
@@ -102,6 +104,46 @@ class ReadList(list):
         if sparse == False:
             mod_mtx = mod_mtx.toarray()       
         return(mod_mtx)
+    
+    def build_region_array(self, window_offset, tags=('ns', 'nl'), strand=None):
+        # get 
+        if strand is None:
+            strand = self.strand
+        rows = []
+        for i, read in enumerate(self):
+            starts, lengths, scores = get_strand_correct_regions(read, tags=tags, centered=True)
+            starts = np.array(starts) + window_offset
+            if strand == "-":
+                starts = np.flip(2 * window_offset - starts)
+                lengths = np.flip(lengths)
+                scores = np.flip(scores)
+            # filter for regions that overlap the window
+            filtered_regions = []
+            for region in zip(starts, lengths, scores):
+                if region[0] < 0 :
+                    if region[0] + region[1] > 0:
+                        # regions that overlap the start of the window
+                        region = (0, region[1]+region[0], region[2])
+                    else:
+                        continue
+                if region[0] < 2*window_offset - 1:
+                    if region[0] + region[1] > 2*window_offset:
+                        # regions that overlap the end of the window
+                        region = (region[0], 2*window_offset - region[0], region[2])
+                    filtered_regions.append(region)
+            # construct a row of the matrix
+            row = []
+            last_end = 0
+            for region in filtered_regions:
+                row = row + list(repeat(0, region[0] - last_end)) + \
+                    list(repeat(region[2], region[1]))
+                last_end = region[0] + region[1]
+            row = row + list(repeat(0, 2*window_offset - last_end))
+            rows.append(np.array(row, dtype='int8'))
+        region_array = np.vstack(rows)
+        return(region_array)
+    
+    
     def build_anno_df(self, anno_series):
         row_data_dict = anno_series.to_dict()
         row_data_dict['read_name'] = [read.alignment.query_name for read in self]
@@ -179,6 +221,34 @@ def get_strand_correct_mods(read, mod_type=M6A_MODS, centered=False, score_cutof
     if centered:
         mods = mods - read.query_position
     return(mods)
+
+
+
+def get_strand_correct_regions(read, tags=('ns', 'nl'), centered=False):
+    # get starts, lengths and scores on the forward genomic strand for a 
+    # single read
+    for tag in tags:
+        if not read.alignment.has_tag(tag):
+            # return empty lists if any tag is missing
+            return(([],[],[]))
+    raw_starts = np.array(read.alignment.get_tag(tags[0]), dtype='int32')
+    raw_lengths = np.array(read.alignment.get_tag(tags[1]))
+    # raw_ends = raw_starts + raw_lengths
+    if len(tags) == 3:
+        raw_scores = np.array(read.alignment.get_tag(tags[2]), dtype='int8')
+    else:
+        raw_scores = list(repeat(1, len(raw_starts)))
+    if read.alignment.is_reverse:
+        starts = np.flip(read.alignment.query_length - raw_starts - raw_lengths)
+        lengths = np.flip(raw_lengths)
+        scores = np.flip(raw_scores)
+    else:
+        starts = raw_starts
+        lengths = raw_lengths
+        scores = raw_scores
+    if centered:
+        starts = starts - read.query_position
+    return((starts, lengths, scores))
 
 
 def read_bed(bed_file): 
