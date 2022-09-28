@@ -30,8 +30,12 @@ class FiberView(ad.AnnData):
         seq_mtx_list = []
         m6a_mtx_list = []
         cpg_mtx_list = []
-        nuc_mtx_list = []
-        msp_mtx_list = []
+        nuc_pos_mtx_list = []
+        nuc_len_mtx_list = []
+        nuc_score_mtx_list = []
+        msp_pos_mtx_list = []
+        msp_len_mtx_list = []
+        msp_score_mtx_list = []
         for i, row in df.iterrows():
             print(i)
             reads = utils.ReadList().get_reads(alignment_file, 
@@ -47,10 +51,18 @@ class FiberView(ad.AnnData):
             cpg_mtx_list.append(reads.build_mod_array(window_offset,
                                                       mod_type=CPG_MODS, sparse=True, 
                                                       score_cutoff=220))
-            nuc_mtx_list.append(reads.build_region_array(window_offset,
-                                                          tags=('ns', 'nl') ))
-            msp_mtx_list.append(reads.build_region_array(window_offset,
-                                                          tags=('as', 'al') ))
+            
+            reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
+                reads.build_sparse_region_array(window_offset, tags=('ns', 'nl'))
+            nuc_pos_mtx_list.append(reg_pos_mtx)
+            nuc_len_mtx_list.append(reg_len_mtx)
+            nuc_score_mtx_list.append(reg_score_mtx)
+            
+            reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
+                reads.build_sparse_region_array(window_offset, tags=('as', 'al'))          
+            msp_pos_mtx_list.append(reg_pos_mtx)
+            msp_len_mtx_list.append(reg_len_mtx)
+            msp_score_mtx_list.append(reg_score_mtx)
             
         super().__init__(
             obs=pd.concat(row_anno_df_list),
@@ -60,8 +72,12 @@ class FiberView(ad.AnnData):
         self.layers['seq'] = np.vstack(seq_mtx_list)
         self.layers['m6a'] = vstack(m6a_mtx_list).tocsr()
         self.layers['cpg'] = vstack(cpg_mtx_list).tocsr()
-        self.layers['nuc'] = vstack(nuc_mtx_list)
-        self.layers['msp'] = vstack(msp_mtx_list)
+        self.layers['nuc_pos'] = vstack(nuc_pos_mtx_list).tocsr()
+        self.layers['nuc_len'] = vstack(nuc_len_mtx_list).tocsr()
+        self.layers['nuc_score'] = vstack(nuc_score_mtx_list).tocsr()
+        self.layers['msp_pos'] = vstack(msp_pos_mtx_list).tocsr()
+        self.layers['msp_len'] = vstack(msp_len_mtx_list).tocsr()
+        self.layers['msp_score'] = vstack(msp_score_mtx_list).tocsr()
         # self.obs['site_name'] = ["{}:{}({})".format(row.seqid, row.pos, row.strand) 
         #                           for i, row in self.obs.iterrows()]
         if mark_cpgs:

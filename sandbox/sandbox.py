@@ -29,7 +29,7 @@ bed_data = fv.read_bed('local/TAIR10_genes.bed')
 
 anno_df = fv.bed_to_anno_df(bed_data)
 anno_df.query('seqid == "chr3" & pos < 200000', inplace=True) 
-fview = fv.FiberView(bamfile, anno_df.iloc[0:1,:])
+fview = fv.FiberView(bamfile, anno_df)
 
 
 sdata = fview.summarize_by_obs(cols_to_keep=list(anno_df.keys()))
@@ -67,17 +67,82 @@ sns.histplot(data=sdata.obs, x='log_score')
 
 fv.tools.plot_summary(sdata)
 
+# run these 2 together
 fv.tools.plot_summary(sdata[sdata.obs.log_score < 2]) # about lower 30%
-
 fv.tools.plot_summary(sdata[sdata.obs.log_score > 2.95]) # about uper 30%
 
 # -----------------------------------------------------------------------------
 # testing regions (nucleosomes and msps)
 
-fview = fv.FiberView(bamfile, anno_df.iloc[2:6,:])
+fview = fv.FiberView(bamfile, anno_df.iloc[0:6,:])
 
-temp = fview.layers['msp'].toarray()
+temp = fview.layers['msp_score'].toarray()
+# sns.heatmap(temp)
+
+
+
+temp2 = temp[:,np.arange(0,2000, 30)]
+sns.heatmap(temp2)
+
+
+
+"""
+# don't use, the function below is better.
+def make_dense_regions(fview, base_name = 'nuc', report="score"):
+    # report can be "score" or "len" this will be the value at every position
+    # of a region in the dense matrix
+    pos_coo = fview.layers["{}_pos".format(base_name)].tocoo()
+    len_coo = fview.layers["{}_len".format(base_name)].tocoo()
+    report_coo = fview.layers["{}_{}".format(base_name, report)].tocoo()
+    I = pos_coo.row         # row
+    J = pos_coo.col         # position along row
+    P = pos_coo.data        # position from start of region
+    L = len_coo.data        # length of region
+    R = report_coo.data     # reported value for region
+    assert len(P) == len(R), "report matrix has different number of values"
+    
+    dense_mtx = np.zeros(fview.shape, dtype=R.dtype)
+    k=0
+    while k < len(I):
+        start = max(J[k] - P[k], 0)
+        end = min(J[k] - P[k] + L[k], dense_mtx.shape[1])
+        dense_mtx[I[k], start:end] = R[k]
+        k += 1 # this could be done more efficiently by skipping rows.
+        
+    return(dense_mtx)
+"""
+
+def make_region_df(fview, base_name = 'nuc'):
+    pos_coo = fview.layers["{}_pos".format(base_name)].tocoo()
+    len_coo = fview.layers["{}_len".format(base_name)].tocoo()
+    score_coo = fview.layers["{}_score".format(base_name)].tocoo()
+    region_df = pd.DataFrame({
+        'row' : pos_coo.row,
+        'start' : pos_coo.col - pos_coo.data,
+        'length' : len_coo.data,
+        'score' : score_coo.data
+        })
+    return(region_df.drop_duplicates())
+ 
+def make_dense_regions(fview, base_name = 'nuc', report="score"):
+    region_df = make_region_df(fview, base_name=base_name)
+    dense_mtx = np.zeros(fview.shape, dtype=region_df[report].dtype)
+    for i, region in region_df.iterrows():
+        start = max(region.start, 0)
+        end = min(max(region.start + region.length, 0), dense_mtx.shape[1])
+        dense_mtx[region.row, start:end] = region[report]
+    return(dense_mtx)
+ 
+   
+# --------------
+
+
+
+temp = make_dense_regions(fview, base_name = 'nuc', report='score')
+temp[temp > 0] = np.minimum(temp[temp > 0] * 4, 1000)
 sns.heatmap(temp)
 
+nucs = make_dense_regions(fview, base_name = 'nuc', report='score')
+msps = make_dense_regions(fview, base_name = 'msp', report='score')
 
-
+sns.heatmap(nucs + msps *2)
