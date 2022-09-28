@@ -35,6 +35,8 @@ from Bio import SeqIO
 
 from matplotlib.colors import LinearSegmentedColormap
 
+from . import utils
+
 
 # =============================================================================
 # KMER COUNTING
@@ -111,3 +113,45 @@ def plot_summary(sdata, bin_width=10):
 
     sns.lineplot(data=long_df, x='pos', y='value', hue='variable')
 
+
+
+# =============================================================================
+# REGIONS
+# =============================================================================
+
+
+def make_region_df(fview, base_name = 'nuc'):
+    pos_coo = fview.layers["{}_pos".format(base_name)].tocoo()
+    len_coo = fview.layers["{}_len".format(base_name)].tocoo()
+    score_coo = fview.layers["{}_score".format(base_name)].tocoo()
+    region_df = pd.DataFrame({
+        'row' : pos_coo.row,
+        'start' : pos_coo.col - pos_coo.data,
+        'length' : len_coo.data,
+        'score' : score_coo.data
+        })
+    return(region_df.drop_duplicates())
+ 
+def make_dense_regions(fview, base_name = 'nuc', report="score"):
+    region_df = make_region_df(fview, base_name=base_name)
+    dense_mtx = np.zeros(fview.shape, dtype=region_df[report].dtype)
+    for i, region in region_df.iterrows():
+        start = max(region.start, 0)
+        end = min(max(region.start + region.length, 0), dense_mtx.shape[1])
+        dense_mtx[region.row, start:end] = region[report]
+    return(dense_mtx)
+ 
+    
+def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf), 
+                   score_limits = (-np.inf, np.inf)):
+    region_df = make_region_df(fview, base_name=base_name)
+    region_df = region_df[(region_df.length > length_limits[0]) &
+                          (region_df.length < length_limits[1]) &
+                          (region_df.score > score_limits[0]) &
+                          (region_df.score < score_limits[1])]
+    pos_array, len_array, score_array = utils.make_sparse_regions(region_df, fview.shape)
+    fview.layers["{}_pos".format(base_name)] = pos_array.tocsr()
+    fview.layers["{}_len".format(base_name)] = len_array.tocsr()
+    fview.layers["{}_score".format(base_name)] = score_array.tocsr()
+    return(None)
+     

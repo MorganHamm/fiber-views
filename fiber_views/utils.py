@@ -343,3 +343,29 @@ def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
         "score": bed_df.score,
     })
     return(anno_df)
+
+   
+def make_sparse_regions(region_df, shape, interval = 30):
+    I = []  # row index in matrix
+    J = []  # column index in matrix
+    P = []  # position along region
+    L = []  # total length of region
+    S = []  # score associated with that region
+    for i, region in region_df.iterrows():
+        start = max(region.start, 0)
+        end = min(max(region.start + region.length, 0), shape[1])
+        J_new = [start] + list(
+            np.arange(start + (interval - (start % interval)),
+                      end - 1,
+                      interval)
+        )
+        I += [region.row] * len(J_new)
+        J += J_new
+        P += list(np.array(J_new) - region.start)
+        L += [region.length] * len(J_new)
+        S += [region.score] * len(J_new)
+    region_array_pos = coo_matrix((P, (I, J)), shape=shape)
+    region_array_len = coo_matrix((L, (I, J)), shape=shape)
+    region_array_score = coo_matrix((S, (I, J)), shape=shape)
+    return(region_array_pos, region_array_len, region_array_score)
+   
