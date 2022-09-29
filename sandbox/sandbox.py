@@ -77,7 +77,7 @@ fv.tools.plot_summary(sdata[sdata.obs.log_score > 2.95]) # about uper 30%
 
 
 
-fview = fv.FiberView(bamfile, anno_df.iloc[10:16,:])
+fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:])
 
 temp = fview.layers['nuc_pos'].toarray()
 # sns.heatmap(temp)
@@ -101,7 +101,13 @@ sns.heatmap(temp)
 nucs = fv.tools.make_dense_regions(fview, base_name = 'nuc', report='score')
 msps = fv.tools.make_dense_regions(fview, base_name = 'msp', report='score')
 
-sns.heatmap(nucs + msps *2)
+sns.heatmap(nucs + msps *2 - fview.layers['m6a'] * 0.5, cmap=sns.color_palette("Set2", 6))
+# -0.5  :   no region, m6A
+# 0     :   no region
+# 0.5   :   nucleosome, m6A
+# 1     :   nucleosome
+# 1.5   :   msp, m6A
+# 2     :   msp 
 
 
 fv.tools.filter_regions(fview, base_name="msp", length_limits=(20, np.inf))

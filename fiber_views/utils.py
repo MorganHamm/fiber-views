@@ -100,8 +100,7 @@ class ReadList(list):
             mods = mods + window_offset
             if strand == "-":
                 mods = (2*window_offset-1) - mods - 1 * (mod_type == CPG_MODS)
-            mods = [mod for mod in mods if mod >=
-                    0 and mod <= 2*window_offset-1]
+            mods = [mod for mod in mods if mod >= 0 and mod <= 2*window_offset-1]
             for mod in mods:
                 I.append(i)
                 J.append(mod)
@@ -112,7 +111,7 @@ class ReadList(list):
         return(mod_mtx)
 
     def build_region_array(self, window_offset, tags=('ns', 'nl'), strand=None):
-        # get
+        # NOT USED, REPLACED BY build_sparse_region_array
         if strand is None:
             strand = self.strand
         rows = []
@@ -156,13 +155,11 @@ class ReadList(list):
         # interval specifies how frequently to report region info.
         # this determines the minimum window size that can be subset to
         # that still preserves region info.
+        window = (-window_offset, window_offset)
+        window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
-        I = []  # row index in matrix
-        J = []  # column index in matrix
-        P = []  # position along region
-        L = []  # total length of region
-        S = []  # score associated with that region
+        region_df = pd.DataFrame()
         for i, read in enumerate(self):
             starts, lengths, scores = get_strand_correct_regions(
                 read, tags=tags, centered=True)
@@ -170,50 +167,19 @@ class ReadList(list):
                 starts = np.flip(0 - np.array(starts) - np.array(lengths))
                 lengths = np.flip(lengths)
                 scores = np.flip(scores)
-            # set 0 to start of window
-            starts = np.array(starts) + window_offset
-            # filter for regions that overlap the window
-            filtered_regions = []
-            for region in zip(starts, lengths, scores):
-                L_true = region[1]
-                start_true = region[0]
-                if region[0] < 0:
-                    if region[0] + region[1] > 0:
-                        # regions that overlap the start of the window
-                        region = (0, region[1]+region[0], region[2])
-                    else:
-                        # whole region is outside of window (left)
-                        continue  # skip the rest of this loop
-                if region[0] < 2*window_offset - 1:
-                    if region[0] + region[1] > 2*window_offset:
-                        # regions that overlap the end of the window
-                        region = (region[0], 2*window_offset -
-                                  region[0], region[2])
-                    # else: region ends in window, no change to region
-                    J_new = [region[0]] + list(
-                        np.arange(region[0] + (interval - (region[0] % interval)),
-                                  region[0]+region[1] - 1,
-                                  interval)
-                    )
-                    I_new = [i] * len(J_new)
-                    P_new = list(np.array(J_new) - start_true)
-                    L_new = [L_true] * len(J_new)
-                    S_new = [region[2]] * len(J_new)
-                    # append new values to I J V lists
-                    I = I + I_new
-                    J = J + J_new
-                    P = P + P_new
-                    L = L + L_new
-                    S = S + S_new
-                # else: do nothing, whole region is right of window
-        # construct COO matrices
-        region_array_pos = coo_matrix(
-            (P, (I, J)), shape=(len(self), 2*window_offset))
-        region_array_len = coo_matrix(
-            (L, (I, J)), shape=(len(self), 2*window_offset))
-        region_array_score = coo_matrix(
-            (S, (I, J)), shape=(len(self), 2*window_offset))
-        return(region_array_pos, region_array_len, region_array_score)
+            starts = np.array(starts, dtype=int) - window[0]
+            region_chunk = pd.DataFrame({
+                'row' : i,
+                'start' : starts,
+                'length' : lengths,
+                'score' : scores
+                })
+            region_df = pd.concat([region_df, region_chunk])
+        region_df = region_df[(region_df.start < window_len) &
+                              (region_df.start + region_df.length > 0) ]
+        return(make_sparse_regions(region_df, 
+                                   shape=(len(self), window_len), 
+                                   interval=interval))
 
     def build_anno_df(self, anno_series):
         row_data_dict = anno_series.to_dict()
@@ -352,7 +318,7 @@ def make_sparse_regions(region_df, shape, interval = 30):
     L = []  # total length of region
     S = []  # score associated with that region
     for i, region in region_df.iterrows():
-        start = max(region.start, 0)
+        start = min(max(region.start, 0), shape[1])
         end = min(max(region.start + region.length, 0), shape[1])
         J_new = [start] + list(
             np.arange(start + (interval - (start % interval)),
@@ -364,8 +330,8 @@ def make_sparse_regions(region_df, shape, interval = 30):
         P += list(np.array(J_new) - region.start)
         L += [region.length] * len(J_new)
         S += [region.score] * len(J_new)
-    region_array_pos = coo_matrix((P, (I, J)), shape=shape)
-    region_array_len = coo_matrix((L, (I, J)), shape=shape)
-    region_array_score = coo_matrix((S, (I, J)), shape=shape)
+    region_array_pos = coo_matrix((P, (I, J)), shape=shape, dtype=int)
+    region_array_len = coo_matrix((L, (I, J)), shape=shape, dtype=int)
+    region_array_score = coo_matrix((S, (I, J)), shape=shape, dtype=int)
     return(region_array_pos, region_array_len, region_array_score)
    
