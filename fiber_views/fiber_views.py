@@ -24,7 +24,7 @@ D_TYPE = np.int64
 # =============================================================================
 
 class FiberView(ad.AnnData):
-    def __init__(self, alignment_file, df, window_offset=1000, 
+    def __init__(self, alignment_file, df, window=(-1000, 1000), 
                  min_mod_score=220, mark_cpgs=True):
         row_anno_df_list = []
         seq_mtx_list = []
@@ -40,33 +40,33 @@ class FiberView(ad.AnnData):
             print(i)
             reads = utils.ReadList().get_reads(alignment_file, 
                                          ref_pos=(row.seqid, row.pos, row.strand))
-            reads.filter_by_window(window_offset, inplace=True)
+            reads.filter_by_window(window, inplace=True)
             if len(reads) == 0:
                 continue
             row_anno_df_list.append(reads.build_anno_df(row))
-            seq_mtx_list.append(reads.build_seq_array(window_offset))
-            m6a_mtx_list.append(reads.build_mod_array(window_offset,
+            seq_mtx_list.append(reads.build_seq_array(window))
+            m6a_mtx_list.append(reads.build_mod_array(window,
                                                       mod_type=M6A_MODS, sparse=True, 
                                                       score_cutoff=220))
-            cpg_mtx_list.append(reads.build_mod_array(window_offset,
+            cpg_mtx_list.append(reads.build_mod_array(window,
                                                       mod_type=CPG_MODS, sparse=True, 
                                                       score_cutoff=220))
             
             reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
-                reads.build_sparse_region_array(window_offset, tags=('ns', 'nl'))
+                reads.build_sparse_region_array(window, tags=('ns', 'nl'))
             nuc_pos_mtx_list.append(reg_pos_mtx)
             nuc_len_mtx_list.append(reg_len_mtx)
             nuc_score_mtx_list.append(reg_score_mtx)
             
             reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
-                reads.build_sparse_region_array(window_offset, tags=('as', 'al'))          
+                reads.build_sparse_region_array(window, tags=('as', 'al'))          
             msp_pos_mtx_list.append(reg_pos_mtx)
             msp_len_mtx_list.append(reg_len_mtx)
             msp_score_mtx_list.append(reg_score_mtx)
             
         super().__init__(
             obs=pd.concat(row_anno_df_list),
-            var=pd.DataFrame({"pos" : np.arange(-window_offset, window_offset)})
+            var=pd.DataFrame({"pos" : np.arange(window[0], window[1])})
             )
         self.X = csr_matrix(self.shape) # empty matrix, needed for AnnData.to_memory()
         self.layers['seq'] = np.vstack(seq_mtx_list)

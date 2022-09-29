@@ -56,12 +56,18 @@ class ReadList(list):
         self.extend(reads)
         return(self)
 
-    def filter_by_window(self, window_offset, inplace=False):
+    def filter_by_window(self, window, inplace=False, strand=None):
         """remove reads that don't fully span a window of +/- window_offset.
             if inplace == True: this instance is modified, else: a new ReadList 
             object is returned"""
-        list_out = [read for read in self if read.query_position - window_offset >= 0 and
-                    read.query_position + window_offset <= read.alignment.query_length]
+        # window = (-window_offset, window_offset)
+        window_len = window[1] - window[0]
+        if strand is None:
+            strand = self.strand
+        if strand == "-":
+            window = (-window[1], -window[0])
+        list_out = [read for read in self if read.query_position + window[0] >= 0 and
+                    read.query_position + window[1] <= read.alignment.query_length]
         if inplace:
             self.clear()
             self.extend(list_out)
@@ -69,43 +75,48 @@ class ReadList(list):
         else:
             return(ReadList(list_out, self.strand))
 
-    def build_seq_array(self, window_offset, strand=None):
+    def build_seq_array(self, window, strand=None):
         # create a byte array of the sequences.
         # warning, filter reads first
+        # window = (-window_offset, window_offset)
+        window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
-        char_array = np.empty((len(self), 2*window_offset), dtype="S1")
+        char_array = np.empty((len(self), window_len), dtype="S1")
         for i, read in enumerate(self):
             center_pos = read.query_position
-            seq = read.alignment.query_sequence[center_pos - window_offset:
-                                                center_pos + window_offset]
+            seq = read.alignment.query_sequence[center_pos + window[0]:
+                                                center_pos + window[1]]
             if strand == "-":
+                seq = read.alignment.query_sequence[center_pos - window[1]:
+                                                    center_pos - window[0]]
                 seq = str(Seq(seq).reverse_complement())
             char_array[i, :] = np.frombuffer(seq.encode('UTF-8'), dtype="S1")
         return(char_array)
 
-    def build_mod_array(self, window_offset, mod_type=M6A_MODS, strand=None,
+    def build_mod_array(self, window, mod_type=M6A_MODS, strand=None,
                         sparse=True, score_cutoff=200):
+        # window = (-window_offset, window_offset)
+        window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
         I = []
         J = []
-        none_count = 0  # for debug
         for i, read in enumerate(self):
             mods = get_strand_correct_mods(read, mod_type, centered=True,
                                            score_cutoff=score_cutoff)
             if mods is None:
-                none_count += 1  # for debug
                 continue
-            mods = mods + window_offset
             if strand == "-":
-                mods = (2*window_offset-1) - mods - 1 * (mod_type == CPG_MODS)
-            mods = [mod for mod in mods if mod >= 0 and mod <= 2*window_offset-1]
+                # mods = (window_len-1) - mods - 1 * (mod_type == CPG_MODS)
+                mods = -mods - 1 - 1 * (mod_type == CPG_MODS)
+            mods = mods - window[0]                
+            mods = [mod for mod in mods if mod >= 0 and mod <= window_len-1]
             for mod in mods:
                 I.append(i)
                 J.append(mod)
         V = np.ones((len(J)), dtype=bool)
-        mod_mtx = coo_matrix((V, (I, J)), shape=(len(self), 2*window_offset))
+        mod_mtx = coo_matrix((V, (I, J)), shape=(len(self), window_len))
         if sparse == False:
             mod_mtx = mod_mtx.toarray()
         return(mod_mtx)
@@ -150,12 +161,12 @@ class ReadList(list):
         region_array = np.vstack(rows)
         return(region_array)
 
-    def build_sparse_region_array(self, window_offset, tags=('ns', 'nl'),
+    def build_sparse_region_array(self, window, tags=('ns', 'nl'),
                                   interval=30, strand=None):
         # interval specifies how frequently to report region info.
         # this determines the minimum window size that can be subset to
         # that still preserves region info.
-        window = (-window_offset, window_offset)
+        # window = (-window_offset, window_offset)
         window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand

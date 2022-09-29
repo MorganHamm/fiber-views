@@ -38,7 +38,8 @@ sdata = fview.summarize_by_obs(cols_to_keep=list(anno_df.keys()))
 # -----------------------------------------------------------------------------
 # check that cpgs are landing on Cs...
 
-fv2 = fview[fview.obs.gene_id == "AT3G01510"]
+# fv2 = fview[fview.obs.gene_id == "AT3G01510"]
+fv2 = fview[1:100]
 
 seq_array = fv2.layers['seq'].copy()
 
@@ -77,7 +78,7 @@ fv.tools.plot_summary(sdata[sdata.obs.log_score > 2.95]) # about uper 30%
 
 
 
-fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:])
+fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:], window=(-1500, 500))
 
 temp = fview.layers['nuc_pos'].toarray()
 # sns.heatmap(temp)
@@ -102,6 +103,7 @@ nucs = fv.tools.make_dense_regions(fview, base_name = 'nuc', report='score')
 msps = fv.tools.make_dense_regions(fview, base_name = 'msp', report='score')
 
 sns.heatmap(nucs + msps *2 - fview.layers['m6a'] * 0.5, cmap=sns.color_palette("Set2", 6))
+
 # -0.5  :   no region, m6A
 # 0     :   no region
 # 0.5   :   nucleosome, m6A
