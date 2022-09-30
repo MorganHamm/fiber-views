@@ -25,7 +25,7 @@ D_TYPE = np.int64
 
 class FiberView(ad.AnnData):
     def __init__(self, alignment_file, df, window=(-1000, 1000), 
-                 min_mod_score=220, mark_cpgs=True):
+                 min_mod_score=220, mark_cpgs=True, fully_span=True):
         row_anno_df_list = []
         seq_mtx_list = []
         m6a_mtx_list = []
@@ -40,7 +40,8 @@ class FiberView(ad.AnnData):
             print(i)
             reads = utils.ReadList().get_reads(alignment_file, 
                                          ref_pos=(row.seqid, row.pos, row.strand))
-            reads.filter_by_window(window, inplace=True)
+            if fully_span:
+                reads.filter_by_window(window, inplace=True)
             if len(reads) == 0:
                 continue
             row_anno_df_list.append(reads.build_anno_df(row))

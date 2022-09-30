@@ -82,16 +82,22 @@ class ReadList(list):
         window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
+        if strand == "-":
+            window = (-window[1], -window[0])            
         char_array = np.empty((len(self), window_len), dtype="S1")
         for i, read in enumerate(self):
             center_pos = read.query_position
-            seq = read.alignment.query_sequence[center_pos + window[0]:
-                                                center_pos + window[1]]
+
+            L_pad = max(0 - (center_pos + window[0]), 0)
+            R_pad = max((center_pos + window[1]) - len(read.alignment.query_sequence), 0)
+            seq = read.alignment.query_sequence[max(center_pos + window[0], 0):
+                                                min(center_pos + window[1], len(read.alignment.query_sequence))]
             if strand == "-":
-                seq = read.alignment.query_sequence[center_pos - window[1]:
-                                                    center_pos - window[0]]
-                seq = str(Seq(seq).reverse_complement())
+                seq = "-" * R_pad + str(Seq(seq).reverse_complement()) + "-" * L_pad
+            else:
+                seq = "-" * L_pad +  str(seq) + "-" * R_pad
             char_array[i, :] = np.frombuffer(seq.encode('UTF-8'), dtype="S1")
+            
         return(char_array)
 
     def build_mod_array(self, window, mod_type=M6A_MODS, strand=None,

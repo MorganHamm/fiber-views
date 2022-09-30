@@ -29,7 +29,7 @@ bed_data = fv.read_bed('local/TAIR10_genes.bed')
 
 anno_df = fv.bed_to_anno_df(bed_data)
 anno_df.query('seqid == "chr3" & pos < 200000', inplace=True) 
-fview = fv.FiberView(bamfile, anno_df)
+fview = fv.FiberView(bamfile, anno_df, fully_span=False)
 
 
 sdata = fview.summarize_by_obs(cols_to_keep=list(anno_df.keys()))
@@ -78,7 +78,7 @@ fv.tools.plot_summary(sdata[sdata.obs.log_score > 2.95]) # about uper 30%
 
 
 
-fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:], window=(-1500, 500))
+fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:], window=(-1500, 500), fully_span=True)
 
 temp = fview.layers['nuc_pos'].toarray()
 # sns.heatmap(temp)
@@ -112,4 +112,47 @@ sns.heatmap(nucs + msps *2 - fview.layers['m6a'] * 0.5, cmap=sns.color_palette("
 # 2     :   msp 
 
 
+sns.heatmap(nucs + msps *2 - fview.layers['m6a'] * 0.5 - (fview.layers['seq'] == b'-'), 
+            cmap=sns.color_palette("Paired", 7))
+
+temp = nucs + msps *2 - fview.layers['m6a'] * 0.5 - (fview.layers['seq'] == b'-')
+
+
 fv.tools.filter_regions(fview, base_name="msp", length_limits=(20, np.inf))
+
+
+
+# -----------------------------------------------------------------------------
+# debug for padding issue
+
+
+
+fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:], window=(-10000, 10000), fully_span=False)
+
+fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:], window=(-1500, 500), fully_span=False)
+
+
+
+fv2 = fview[fview.obs.strand == "-"]
+fv2 = fview[fview.obs.strand == "+"]
+
+
+np.sum(fv2.layers['seq'] == b'-')
+
+cpgs = fv2.layers['seq'][fv2.layers['cpg'].toarray()]
+sum(cpgs == b'C')
+sum(cpgs == b'A')
+sum(cpgs == b'G')
+sum(cpgs == b'T')
+sum(cpgs == b'-')
+
+
+mAs = fv2.layers['seq'][fv2.layers['m6a'].toarray()]
+sum(mAs == b'A')
+sum(mAs == b'C')
+sum(mAs == b'G')
+sum(mAs == b'T')
+sum(mAs == b'-')
+
+
+
