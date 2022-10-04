@@ -10,11 +10,13 @@ Created on Tue Aug 30 16:05:34 2022
 import numpy as np
 import pandas as pd
 from itertools import repeat
+import warnings
 
 import anndata as ad
 from scipy.sparse import csr_matrix, coo_matrix, vstack
 import pysam
 from Bio.Seq import Seq
+
 
 
 CPG_MODS = [("C", 0, "m")]
@@ -328,27 +330,47 @@ def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
     return(anno_df)
 
    
-def make_sparse_regions(region_df, shape, interval = 30):
+def make_sparse_regions(region_df, shape, bin_width = 1, interval = 30):
+    # interval is in # of bins, not bp
+    # pos values are still in base pairs after binning. and may be negative for the first reported pos of a region
+    # shape is the data shape before binning
     I = []  # row index in matrix
     J = []  # column index in matrix
     P = []  # position along region
     L = []  # total length of region
     S = []  # score associated with that region
+    max_bin = shape[1] // bin_width
+    new_shape = (shape[0], max_bin)
+    old_row = -1
     for i, region in region_df.iterrows():
-        start = min(max(region.start, 0), shape[1])
-        end = min(max(region.start + region.length, 0), shape[1])
-        J_new = [start] + list(
-            np.arange(start + (interval - (start % interval)),
-                      end - 1,
+        if region.row != old_row:
+            row_Js = [] # clear the list of taken J values for a new row
+            old_row = region.row
+        start_bin = min(max(region.start // bin_width, 0), max_bin)
+        end_bin = min(max( (region.start + region.length) // bin_width, 0), max_bin)        
+        J_vals = [start_bin] + list(
+            np.arange(start_bin + (interval - (start_bin % interval)),
+                      end_bin - 1,
                       interval)
         )
+        # if the reporting positon is already taken, slide over until it's not
+        J_new = []
+        for k, val in enumerate(J_vals):
+            while val in row_Js:
+                val += 1
+                if val - J_vals[k] >= interval:
+                    warnings.warn("Warning: region report lost due to overloading")
+                    break
+            row_Js.append(val)
+            J_new.append(val)
         I += [region.row] * len(J_new)
         J += J_new
-        P += list(np.array(J_new) - region.start)
+        P += list(np.array(J_new) * bin_width - region.start)
         L += [region.length] * len(J_new)
         S += [region.score] * len(J_new)
-    region_array_pos = coo_matrix((P, (I, J)), shape=shape, dtype=int)
-    region_array_len = coo_matrix((L, (I, J)), shape=shape, dtype=int)
-    region_array_score = coo_matrix((S, (I, J)), shape=shape, dtype=int)
+    region_array_pos = coo_matrix((P, (I, J)), shape=new_shape, dtype=int)
+    region_array_len = coo_matrix((L, (I, J)), shape=new_shape, dtype=int)
+    region_array_score = coo_matrix((S, (I, J)), shape=new_shape, dtype=int)
     return(region_array_pos, region_array_len, region_array_score)
    
+    

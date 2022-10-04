@@ -25,7 +25,8 @@ D_TYPE = np.int64
 
 class FiberView(ad.AnnData):
     def __init__(self, alignment_file, df, window=(-1000, 1000), 
-                 min_mod_score=220, mark_cpgs=True, fully_span=True):
+                 min_mod_score=220, mark_cpgs=True, fully_span=True, 
+                 region_interval=30):
         row_anno_df_list = []
         seq_mtx_list = []
         m6a_mtx_list = []
@@ -54,13 +55,15 @@ class FiberView(ad.AnnData):
                                                       score_cutoff=220))
             
             reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
-                reads.build_sparse_region_array(window, tags=('ns', 'nl'))
+                reads.build_sparse_region_array(window, tags=('ns', 'nl'), 
+                                                interval=region_interval)
             nuc_pos_mtx_list.append(reg_pos_mtx)
             nuc_len_mtx_list.append(reg_len_mtx)
             nuc_score_mtx_list.append(reg_score_mtx)
             
             reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
-                reads.build_sparse_region_array(window, tags=('as', 'al'))          
+                reads.build_sparse_region_array(window, tags=('as', 'al'), 
+                                                interval=region_interval)          
             msp_pos_mtx_list.append(reg_pos_mtx)
             msp_len_mtx_list.append(reg_len_mtx)
             msp_score_mtx_list.append(reg_score_mtx)
@@ -81,6 +84,11 @@ class FiberView(ad.AnnData):
         self.layers['msp_score'] = vstack(msp_score_mtx_list).tocsr()
         # self.obs['site_name'] = ["{}:{}({})".format(row.seqid, row.pos, row.strand) 
         #                           for i, row in self.obs.iterrows()]
+        # add unstructured data
+        self.uns['region_report_interval'] = region_interval
+        self.uns['is_agg'] = False
+        self.uns['region_base_names'] = ['nuc', 'msp']
+        self.uns['bin_width'] = 1
         if mark_cpgs:
             self.mark_cpg_sites()
         
@@ -136,6 +144,8 @@ class FiberView(ad.AnnData):
         new_adata.layers['Gs'] = np.asarray(np.vstack(Gs))
         new_adata.layers['Ts'] = np.asarray(np.vstack(Ts))
         new_adata.layers['CpGs'] = np.asarray(np.vstack(cpg_sites))
+        new_adata.uns = self.uns
+        new_adata.uns['is_agg'] = True
         return(new_adata)
     def get_seq_records(self, id_col="read_name"):
         seqs = [Seq(bytes(row)) for row in self.layers['seq']]
@@ -144,6 +154,7 @@ class FiberView(ad.AnnData):
             seq_records.append( SeqRecord(seqs[i], id=self.obs[id_col][i], 
                                           description=self.obs.index[i]) )
         return(seq_records)
+
 
 
 def ad2fv(ad_object):

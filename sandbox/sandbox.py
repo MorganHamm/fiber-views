@@ -14,6 +14,9 @@ import matplotlib.pyplot as plt
 import fiber_views as fv
 import pysam
 
+import anndata as ad
+from scipy.sparse import csr_matrix, coo_matrix, vstack
+
 os.chdir(os.path.expanduser("~/git/fiber_views"))
 
 
@@ -29,6 +32,10 @@ bed_data = fv.read_bed('local/TAIR10_genes.bed')
 
 anno_df = fv.bed_to_anno_df(bed_data)
 anno_df.query('seqid == "chr3" & pos < 200000', inplace=True) 
+
+
+
+
 fview = fv.FiberView(bamfile, anno_df, fully_span=False)
 
 
@@ -51,6 +58,31 @@ temp = seq_array[fv2.layers['m6a'].toarray()]
 for i in range(100):
     print(temp[i])
 
+# debug for padding issue
+
+fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:], window=(-10000, 10000), fully_span=False)
+
+fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:], window=(-1500, 500), fully_span=False)
+
+fv2 = fview[fview.obs.strand == "-"]
+fv2 = fview[fview.obs.strand == "+"]
+
+np.sum(fv2.layers['seq'] == b'-')
+
+cpgs = fv2.layers['seq'][fv2.layers['cpg'].toarray()]
+sum(cpgs == b'C')
+sum(cpgs == b'A')
+sum(cpgs == b'G')
+sum(cpgs == b'T')
+sum(cpgs == b'-')
+
+
+mAs = fv2.layers['seq'][fv2.layers['m6a'].toarray()]
+sum(mAs == b'A')
+sum(mAs == b'C')
+sum(mAs == b'G')
+sum(mAs == b'T')
+sum(mAs == b'-')
 
 
 # -----------------------------------------------------------------------------
@@ -75,84 +107,60 @@ fv.tools.plot_summary(sdata[sdata.obs.log_score > 2.95]) # about uper 30%
 # -----------------------------------------------------------------------------
 # testing regions (nucleosomes and msps)
 
+fview = fv.FiberView(bamfile, anno_df.iloc[13:14,:], window=(-1500, 500), fully_span=False)
 
-
-
-fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:], window=(-1500, 500), fully_span=True)
-
-temp = fview.layers['nuc_pos'].toarray()
-# sns.heatmap(temp)
-
-
-
-temp2 = temp[:,np.arange(0,2000, 30)]
-sns.heatmap(temp2)
-
-    
-
-
-# --------------
-
-
-
-temp = fv.tools.make_dense_regions(fview, base_name = 'nuc', report='score')
-temp[temp > 0] = np.minimum(temp[temp > 0] * 4, 1000)
-sns.heatmap(temp)
-
-nucs = fv.tools.make_dense_regions(fview, base_name = 'nuc', report='score')
-msps = fv.tools.make_dense_regions(fview, base_name = 'msp', report='score')
-
-sns.heatmap(nucs + msps *2 - fview.layers['m6a'] * 0.5, cmap=sns.color_palette("Set2", 6))
-
-# -0.5  :   no region, m6A
-# 0     :   no region
-# 0.5   :   nucleosome, m6A
-# 1     :   nucleosome
-# 1.5   :   msp, m6A
-# 2     :   msp 
-
-
-sns.heatmap(nucs + msps *2 - fview.layers['m6a'] * 0.5 - (fview.layers['seq'] == b'-'), 
-            cmap=sns.color_palette("Paired", 7))
-
-temp = nucs + msps *2 - fview.layers['m6a'] * 0.5 - (fview.layers['seq'] == b'-')
-
+fv.tools.simple_region_plot(fview)
 
 fv.tools.filter_regions(fview, base_name="msp", length_limits=(20, np.inf))
 
 
 
 # -----------------------------------------------------------------------------
-# debug for padding issue
+# binning regions
+
+
+fview = fv.FiberView(bamfile, anno_df.iloc[13:14,:], window=(-1500, 500), fully_span=False)
+
+
+bin_width = 10
+
+nuc_pos_mtx, nuc_len_mtx, nuc_score_mtx = fv.tools.bin_sparse_regions(fview, base_name='nuc', bin_width=bin_width)
+msp_pos_mtx, msp_len_mtx, msp_score_mtx = fv.tools.bin_sparse_regions(fview, base_name='msp', bin_width=bin_width)
+
+new_adata = ad.AnnData(
+            obs=fview.obs,
+            var=pd.DataFrame({"pos" : np.arange(fview.var.pos[0], fview.var.pos[fview.shape[1]-1], bin_width)})
+    )
+
+new_adata.X = csr_matrix(new_adata.shape)
+new_adata.uns = fview.uns
+new_adata.uns['is_agg'] = True
+new_adata.uns['bin_width'] = bin_width
+
+new_adata.layers['nuc_pos'] = nuc_pos_mtx.tocsr()
+new_adata.layers['nuc_len'] = nuc_len_mtx.tocsr()
+new_adata.layers['nuc_score'] = nuc_score_mtx.tocsr()
+new_adata.layers['msp_pos'] = msp_pos_mtx.tocsr()
+new_adata.layers['msp_len'] = msp_len_mtx.tocsr()
+new_adata.layers['msp_score'] = msp_score_mtx.tocsr()
+
+new_adata.layers['m6a'] = csr_matrix(new_adata.shape)
+new_adata.layers['seq'] = csr_matrix(new_adata.shape, dtype='S1')
+
+temp2 = fv.tools.make_region_df(fview)
+temp = fv.tools.make_region_df(new_adata)
+
+# check that making region df from binned data results in same df.
+np.sum(~(temp == temp2))
 
 
 
-fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:], window=(-10000, 10000), fully_span=False)
+nucs = fv.tools.make_dense_regions(new_adata, base_name = 'nuc', report='score')
+msps = fv.tools.make_dense_regions(new_adata, base_name = 'msp', report='score')
+sns.heatmap(nucs + msps *2, cmap=sns.color_palette("Paired", 4))
+    
+sns.heatmap(msps, cmap=sns.color_palette("Paired", 4))
 
-fview = fv.FiberView(bamfile, anno_df.iloc[13:18,:], window=(-1500, 500), fully_span=False)
-
-
-
-fv2 = fview[fview.obs.strand == "-"]
-fv2 = fview[fview.obs.strand == "+"]
-
-
-np.sum(fv2.layers['seq'] == b'-')
-
-cpgs = fv2.layers['seq'][fv2.layers['cpg'].toarray()]
-sum(cpgs == b'C')
-sum(cpgs == b'A')
-sum(cpgs == b'G')
-sum(cpgs == b'T')
-sum(cpgs == b'-')
-
-
-mAs = fv2.layers['seq'][fv2.layers['m6a'].toarray()]
-sum(mAs == b'A')
-sum(mAs == b'C')
-sum(mAs == b'G')
-sum(mAs == b'T')
-sum(mAs == b'-')
 
 
 

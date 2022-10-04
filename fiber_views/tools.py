@@ -16,6 +16,7 @@ import pandas as pd
 
 import os
 import sys
+import warnings
 import seaborn as sns
 import matplotlib.pyplot as plt
 import fiber_views as fv
@@ -24,6 +25,7 @@ import pysam
 import itertools
 
 from scipy.spatial import distance
+from scipy.sparse import csr_matrix, coo_matrix, vstack
 
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.cluster import hierarchy
@@ -113,6 +115,19 @@ def plot_summary(sdata, bin_width=10):
 
     sns.lineplot(data=long_df, x='pos', y='value', hue='variable')
 
+def simple_region_plot(fview):
+    # -0.5  :   no region, m6A
+    # 0     :   no region
+    # 0.5   :   nucleosome, m6A
+    # 1     :   nucleosome
+    # 1.5   :   msp, m6A
+    # 2     :   msp 
+    nucs = make_dense_regions(fview, base_name = 'nuc', report='score')
+    msps = make_dense_regions(fview, base_name = 'msp', report='score')
+    sns.heatmap(nucs + msps *2 - fview.layers['m6a'] * 0.5 - (fview.layers['seq'] == b'-'), 
+                cmap=sns.color_palette("Paired", 7))
+    
+
 
 
 # =============================================================================
@@ -120,17 +135,25 @@ def plot_summary(sdata, bin_width=10):
 # =============================================================================
 
 
-def make_region_df(fview, base_name = 'nuc'):
+def make_region_df(fview, base_name = 'nuc', zero_pos='left'):
     pos_coo = fview.layers["{}_pos".format(base_name)].tocoo()
     len_coo = fview.layers["{}_len".format(base_name)].tocoo()
     score_coo = fview.layers["{}_score".format(base_name)].tocoo()
+    if zero_pos == 'left':
+        # the right edge of the fiber view window is considered 0
+        start = pos_coo.col * fview.uns['bin_width'] - pos_coo.data
+    elif zero_pos == 'center':
+        # the 'center' of the fiber view window is considered 0
+        start = fview.var.pos[pos_coo.col] - pos_coo.data
+    else:
+        start = fview.var.pos[pos_coo.col] - pos_coo.data
     region_df = pd.DataFrame({
         'row' : pos_coo.row,
-        'start' : pos_coo.col - pos_coo.data,
+        'start' : start,
         'length' : len_coo.data,
         'score' : score_coo.data
         })
-    return(region_df.drop_duplicates())
+    return(region_df.drop_duplicates(ignore_index=True))
  
 def make_dense_regions(fview, base_name = 'nuc', report="score"):
     region_df = make_region_df(fview, base_name=base_name)
@@ -155,3 +178,30 @@ def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf),
     fview.layers["{}_score".format(base_name)] = score_array.tocsr()
     return(None)
      
+    
+def bin_sparse_regions(fview, base_name = 'nuc', bin_width = 10, interval = 3):
+    region_df = make_region_df(fview, base_name=base_name, zero_pos='left')
+    results = utils.make_sparse_regions(region_df, fview.shape, 
+                                          bin_width = bin_width, 
+                                          interval = interval)
+    # returns coo matrices for pos, len, and score
+    return(results)
+    
+def make_region_densities(fview, base_name = 'nuc'):
+    # creates a dense 
+    region_df = make_region_df(fview, base_name=base_name, zero_pos='left')
+    density_mtx = np.zeros(fview.shape)
+    pass
+    
+    
+def agg_by_obs_and_bin(fview, obs_col_name='site_name', bin_width=10, cols_to_keep=[]):
+    pass
+    
+    
+    
+    
+    
+    
+    
+    
+    
