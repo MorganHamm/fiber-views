@@ -124,8 +124,10 @@ fview = fv.FiberView(bamfile, anno_df.iloc[13:14,:], window=(-1500, 500), fully_
 
 bin_width = 10
 
-nuc_pos_mtx, nuc_len_mtx, nuc_score_mtx = fv.tools.bin_sparse_regions(fview, base_name='nuc', bin_width=bin_width)
-msp_pos_mtx, msp_len_mtx, msp_score_mtx = fv.tools.bin_sparse_regions(fview, base_name='msp', bin_width=bin_width)
+nuc_pos_mtx, nuc_len_mtx, nuc_score_mtx = \
+    fv.tools.bin_sparse_regions(fview, base_name='nuc', bin_width=bin_width)
+msp_pos_mtx, msp_len_mtx, msp_score_mtx = \
+    fv.tools.bin_sparse_regions(fview, base_name='msp', bin_width=bin_width)
 
 new_adata = ad.AnnData(
             obs=fview.obs,
@@ -161,6 +163,30 @@ sns.heatmap(nucs + msps *2, cmap=sns.color_palette("Paired", 4))
     
 sns.heatmap(msps, cmap=sns.color_palette("Paired", 4))
 
+# -----------------------------------------------------------------------------
+# Try aggregating with agg_by_obs_and_bin
 
 
 
+fview = fv.FiberView(bamfile, anno_df, fully_span=False)
+
+fv.tools.filter_regions(fview, base_name='msp', length_limits=(20, np.inf))
+
+fv_agg = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10, 
+                            obs_to_keep=['seqid', 'pos', 'strand', 'gene_id', 'score'])
+
+# sns.heatmap(fv_agg.layers['msp_coverage'] / np.array(fv_agg.obs.n_seqs)[:, np.newaxis])
+sns.heatmap(fv_agg.layers['msp_coverage'] / fv_agg.layers['read_coverage'])
+
+sns.heatmap(fv_agg.layers['m6a_count'] / (fv_agg.layers['A_count'] + fv_agg.layers['T_count']))
+            
+
+fv_agg = fv_agg[fv_agg.obs.sort_values(by='score', ascending=False).index]            
+            
+temp = fv_agg.layers['msp_coverage'] / fv_agg.layers['read_coverage']
+
+temp = fv_agg.layers['m6a_count'] / (fv_agg.layers['A_count'] + fv_agg.layers['T_count'])
+
+temp2 = np.sum(temp, axis=0)
+
+sns.scatterplot(x=fv_agg.var.pos, y=temp2)

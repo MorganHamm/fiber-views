@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 
 
+import anndata as ad
+
 import os
 import sys
 import warnings
@@ -167,6 +169,7 @@ def make_dense_regions(fview, base_name = 'nuc', report="score"):
     
 def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf), 
                    score_limits = (-np.inf, np.inf)):
+    # filters in place
     region_df = make_region_df(fview, base_name=base_name)
     region_df = region_df[(region_df.length > length_limits[0]) &
                           (region_df.length < length_limits[1]) &
@@ -194,11 +197,86 @@ def make_region_densities(fview, base_name = 'nuc'):
     pass
     
     
-def agg_by_obs_and_bin(fview, obs_col_name='site_name', bin_width=10, cols_to_keep=[]):
-    pass
-    
-    
-    
+def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10, obs_to_keep=[]):
+    # obs_to_keep should be a list of column names, should not be read specific
+    if not obs_group_var in obs_to_keep:
+        obs_to_keep.append(obs_group_var)
+    obs_to_keep = [col  for col in obs_to_keep if col in fview.obs.columns]
+    new_obs = fview.obs[obs_to_keep].groupby([obs_group_var]).first()
+    new_obs['n_seqs'] = fview.obs.groupby([obs_group_var]).count().iloc[:,1]
+    # the value in var.pos is the pos at the start of each window.
+    new_var = pd.DataFrame({"pos" : list(range(fview.var.pos[0], 
+                                               fview.var.pos[fview.shape[1]-1]+1,
+                                                             bin_width))})
+    # create new AnnData object and populate uns data
+    new_adata = ad.AnnData(obs=new_obs, var=new_var)
+    new_adata.X = csr_matrix(new_adata.shape) 
+    new_adata.uns = fview.uns.copy()
+    new_adata.uns['is_agg'] = True
+    new_adata.uns['bin_width'] = bin_width
+    del(new_adata.uns['region_report_interval'])
+    # count occurence of each base in each bin
+    for base in [b'A', b'C', b'G', b'T']:
+        layer_name = "{}_count".format(base.decode())
+        new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=int)
+        for i, group in enumerate(list(new_adata.obs.index)):
+            for j in list(range(new_adata.shape[1])):
+                new_adata.layers[layer_name][i, j] = \
+                    np.sum(fview.layers['seq'][fview.obs[obs_group_var] == group, 
+                                                j*bin_width:(j+1)*bin_width]  == base
+                           )
+    new_adata.layers['read_coverage'] = new_adata.layers['A_count'] + \
+        new_adata.layers['C_count'] + new_adata.layers['G_count'] + \
+        new_adata.layers['T_count']
+    # aggregate mod count by bin
+    for mod in fview.uns['mods']:
+        layer_name = "{}_count".format(mod)
+        new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=int)
+        for i, group in enumerate(list(new_adata.obs.index)):
+            for j in list(range(new_adata.shape[1])):
+                new_adata.layers[layer_name][i, j] = \
+                    np.sum(fview.layers[mod][fview.obs[obs_group_var] == group, 
+                                    j*bin_width:(j+1)*bin_width]
+                           )
+    # count cpg sites per bin
+    layer_name = "cpg_site_count"
+    new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=int)
+    for i, group in enumerate(list(new_adata.obs.index)):
+        for j in list(range(new_adata.shape[1])):
+            new_adata.layers[layer_name][i, j] = \
+                np.sum(fview.layers['cpg_sites'][fview.obs[obs_group_var] == group, 
+                                j*bin_width:(j+1)*bin_width]
+                       )
+    # aggregate regions
+    for region_type in fview.uns['region_base_names']:
+        layer_name = "{}_coverage".format(region_type)
+        new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=float)
+        region_df = make_region_df(fview, base_name=region_type, zero_pos='left')
+        for m, region in region_df.iterrows():
+            group = fview.obs[obs_group_var][region.row]
+            i = new_adata.obs.index.get_loc(group)
+            reg_bound_start = max(0, region.start)
+            reg_bound_end = min(region.start + region.length, bin_width * new_adata.shape[1])
+            reg_start_bin = reg_bound_start // bin_width
+            reg_end_bin = reg_bound_end // bin_width
+            if reg_start_bin == reg_end_bin:
+                # if the region is fully contained in one bin
+                new_adata.layers[layer_name][i, reg_start_bin] += \
+                    region.score * (reg_bound_end - reg_bound_start)
+                continue
+            # bins fully covered by the region
+            new_adata.layers[layer_name][i, reg_start_bin + 1:reg_end_bin] += \
+                region.score * bin_width
+            # partial bin at beginning of region
+            new_adata.layers[layer_name][i, reg_start_bin] += \
+                (bin_width - (reg_bound_start % bin_width)) * region.score
+            # partial bin at end of region
+            if reg_end_bin != new_adata.shape[1]:
+                new_adata.layers[layer_name][i, reg_end_bin] += \
+                    (reg_bound_end % bin_width) * region.score    
+    return(new_adata)
+
+
     
     
     

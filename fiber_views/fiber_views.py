@@ -88,6 +88,7 @@ class FiberView(ad.AnnData):
         self.uns['region_report_interval'] = region_interval
         self.uns['is_agg'] = False
         self.uns['region_base_names'] = ['nuc', 'msp']
+        self.uns['mods'] = ['m6a', 'cpg']
         self.uns['bin_width'] = 1
         if mark_cpgs:
             self.mark_cpg_sites()
