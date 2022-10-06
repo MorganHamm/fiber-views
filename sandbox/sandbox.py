@@ -36,7 +36,9 @@ anno_df.query('seqid == "chr3" & pos < 200000', inplace=True)
 
 
 
-fview = fv.FiberView(bamfile, anno_df, fully_span=False)
+fview = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=False)
+
+fview = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=True)
 
 
 sdata = fview.summarize_by_obs(cols_to_keep=list(anno_df.keys()))
@@ -91,10 +93,24 @@ sum(mAs == b'-')
 
 sdata = fv.read_h5ad("local/all_genes_summary.h5ad")
 
+sdata = sdata[sdata.obs.sort_values(by='score', ascending=False).index]
 
-sdata = sdata[~sdata.obs.score.isnull(), ]
-sdata.obs['log_score'] = np.log10(sdata.obs.score)
-sdata = sdata[sdata.obs.n_seqs < 500, ]
+n_NAs = sum(sdata.obs.score.isnull())
+split_point = len(sdata.obs) - n_NAs
+
+decile_group_size = (split_point / 10) + 1
+
+sdata.obs['decile'] = np.append(
+    np.array(np.arange(split_point) // decile_group_size + 1, dtype=int),
+    [0]*n_NAs)
+
+sdata.obs['log_score'] = np.log10(sdata.obs.score + 1)
+sdata.obs.log_score[split_point:] = 0
+
+
+# sdata = sdata[~sdata.obs.score.isnull(), ]
+# sdata.obs['log_score'] = np.log10(sdata.obs.score)
+# sdata = sdata[sdata.obs.n_seqs < 500, ]
 
 sns.histplot(data=sdata.obs, x='log_score')
 
@@ -170,7 +186,7 @@ sns.heatmap(msps, cmap=sns.color_palette("Paired", 4))
 
 fview = fv.FiberView(bamfile, anno_df, fully_span=False)
 
-fv.tools.filter_regions(fview, base_name='msp', length_limits=(20, np.inf))
+
 
 fv_agg = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10, 
                             obs_to_keep=['seqid', 'pos', 'strand', 'gene_id', 'score'])
@@ -190,3 +206,5 @@ temp = fv_agg.layers['m6a_count'] / (fv_agg.layers['A_count'] + fv_agg.layers['T
 temp2 = np.sum(temp, axis=0)
 
 sns.scatterplot(x=fv_agg.var.pos, y=temp2)
+
+sns.lineplot(x=fv_agg.var.pos, y=fv_agg.layers['read_coverage'][0,:]/10)

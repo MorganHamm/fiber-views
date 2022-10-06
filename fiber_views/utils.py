@@ -77,6 +77,26 @@ class ReadList(list):
         else:
             return(ReadList(list_out, self.strand))
 
+    def filter_by_end_meth(self, dist=3000, cutoff=2, inplace=False):
+        """remove reads if they have fewer than [cutoff] m6A mods within [dist] base 
+        pairs of the read start and end
+        """
+        list_out = []
+        for read in self:
+            mods = get_strand_correct_mods(read)
+            read_len = read.alignment.query_length
+            if mods is None:
+                continue
+            if sum(mods < dist) > cutoff and sum(mods > (read_len - dist)) > cutoff:
+                list_out.append(read)
+        if inplace:
+            self.clear()
+            self.extend(list_out)
+            return(None)
+        else:
+            return(ReadList(list_out, self.strand))                
+        
+
     def build_seq_array(self, window, strand=None):
         # create a byte array of the sequences.
         # warning, filter reads first
@@ -200,13 +220,15 @@ class ReadList(list):
                                    shape=(len(self), window_len), 
                                    interval=interval))
 
-    def build_anno_df(self, anno_series):
+    def build_anno_df(self, anno_series, tags=['np', 'ec', 'rq']):
         row_data_dict = anno_series.to_dict()
         row_data_dict['read_name'] = [
             read.alignment.query_name for read in self]
         row_data_dict['read_length'] = [
             read.alignment.query_length for read in self]
         row_data_dict['read_flag'] = [read.alignment.flag for read in self]
+        for tag in tags:
+            row_data_dict[tag] = [read.alignment.get_tag(tag) for read in self]
         row_data_dict['site_name'] = "{}:{}({})".format(anno_series.seqid,
                                                         anno_series.pos,
                                                         anno_series.strand)

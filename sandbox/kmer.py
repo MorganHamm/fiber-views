@@ -19,7 +19,7 @@ os.chdir(os.path.expanduser("~/git/fiber_views"))
 
 
 fview = fv.read_h5ad("local/test_fiberview.h5ad")
-
+# fview = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=True)
 
 
 fv2 = fv.ad2fv(fview[fview.obs.gene_id == "AT3G01480", ])
@@ -44,6 +44,10 @@ dendrogram(Z)
 
 # re-order fiber view rows to match dendrogram
 fv2 = fv.ad2fv(fv2[hierarchy.leaves_list(Z), :] )
+fv.tools.simple_region_plot(fv2)
+
+sns.scatterplot(x=range(fv2.shape[0]), y=fv2.obs.rq)
+
 fv.tools.plot_methylation(fv2)
 
 

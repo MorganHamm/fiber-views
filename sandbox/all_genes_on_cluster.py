@@ -34,13 +34,14 @@ print("collecting records for {} genes".format(anno_df.shape[0]))
 start_time = time.time()
 fview = fv.FiberView(bamfile, anno_df)
 end_time = time.time()
-
 print("time to process all genes: {} minutes".format( (end_time - start_time)/60  ))
 
-start_time = time.time()
-sdata = fview.summarize_by_obs(cols_to_keep=list(anno_df.keys()))
-end_time = time.time()
+print("filtering MSPs")
+fv.tools.filter_regions(fview, base_name='msp', length_limits=(20, np.inf))
 
+start_time = time.time()
+sdata = fv.tools.agg_by_obs_and_bin(fview, cols_to_keep=list(anno_df.keys()))
+end_time = time.time()
 print("time to summarize: {} minutes".format( (end_time - start_time)/60  ))
 
 fview.write_h5ad("local/all_genes.h5ad")

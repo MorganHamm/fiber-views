@@ -127,7 +127,7 @@ def simple_region_plot(fview):
     nucs = make_dense_regions(fview, base_name = 'nuc', report='score')
     msps = make_dense_regions(fview, base_name = 'msp', report='score')
     sns.heatmap(nucs + msps *2 - fview.layers['m6a'] * 0.5 - (fview.layers['seq'] == b'-'), 
-                cmap=sns.color_palette("Paired", 7))
+                cmap=sns.color_palette("Paired", 7), vmin=-1, vmax=2)
     
 
 

@@ -26,7 +26,8 @@ D_TYPE = np.int64
 class FiberView(ad.AnnData):
     def __init__(self, alignment_file, df, window=(-1000, 1000), 
                  min_mod_score=220, mark_cpgs=True, fully_span=True, 
-                 region_interval=30):
+                 region_interval=30, filter_args={'dist':3000, 'cutoff':2},
+                 tags=['np', 'ec', 'rq']):
         row_anno_df_list = []
         seq_mtx_list = []
         m6a_mtx_list = []
@@ -43,9 +44,11 @@ class FiberView(ad.AnnData):
                                          ref_pos=(row.seqid, row.pos, row.strand))
             if fully_span:
                 reads.filter_by_window(window, inplace=True)
+            if filter_args is not None:
+                reads.filter_by_end_meth(dist=filter_args['dist'], cutoff=filter_args['cutoff'], inplace=True)
             if len(reads) == 0:
                 continue
-            row_anno_df_list.append(reads.build_anno_df(row))
+            row_anno_df_list.append(reads.build_anno_df(row, tags=tags))
             seq_mtx_list.append(reads.build_seq_array(window))
             m6a_mtx_list.append(reads.build_mod_array(window,
                                                       mod_type=M6A_MODS, sparse=True, 
