@@ -117,7 +117,7 @@ def plot_summary(sdata, bin_width=10):
 
     sns.lineplot(data=long_df, x='pos', y='value', hue='variable')
 
-def simple_region_plot(fview):
+def simple_region_plot(fview, mod='m6a'):
     # -0.5  :   no region, m6A
     # 0     :   no region
     # 0.5   :   nucleosome, m6A
@@ -126,7 +126,7 @@ def simple_region_plot(fview):
     # 2     :   msp 
     nucs = make_dense_regions(fview, base_name = 'nuc', report='score')
     msps = make_dense_regions(fview, base_name = 'msp', report='score')
-    sns.heatmap(nucs + msps *2 - fview.layers['m6a'] * 0.5 - (fview.layers['seq'] == b'-'), 
+    sns.heatmap(nucs + msps *2 - fview.layers[mod] * 0.5 - (fview.layers['seq'] == b'-'), 
                 cmap=sns.color_palette("Paired", 7), vmin=-1, vmax=2)
     
 
@@ -197,8 +197,13 @@ def make_region_densities(fview, base_name = 'nuc'):
     pass
     
     
-def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10, obs_to_keep=[]):
+def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10, 
+                       obs_to_keep=['seqid', 'pos', 'strand', '']):
     # obs_to_keep should be a list of column names, should not be read specific
+    if obs_group_var is None:
+        # if None is passed to obs_group_var, process each row individually
+        fview.obs['row'] = range(len(fview))
+        obs_group_var = 'row'
     if not obs_group_var in obs_to_keep:
         obs_to_keep.append(obs_group_var)
     obs_to_keep = [col  for col in obs_to_keep if col in fview.obs.columns]
