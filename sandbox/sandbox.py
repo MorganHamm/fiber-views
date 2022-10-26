@@ -41,7 +41,9 @@ fview = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=False)
 fview = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=True)
 
 
-sdata = fview.summarize_by_obs(cols_to_keep=list(anno_df.keys()))
+sdata = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10, 
+                                obs_to_keep=['seqid', 'pos', 'strand', 
+                                             'gene_id', 'score'])
 
 
 # -----------------------------------------------------------------------------
@@ -188,8 +190,11 @@ fview = fv.FiberView(bamfile, anno_df, fully_span=False)
 
 
 
-fv_agg = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10, 
+fv_agg = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=20, 
                             obs_to_keep=['seqid', 'pos', 'strand', 'gene_id', 'score'])
+
+# sort by expression score
+fv_agg = fv_agg[fv_agg.obs.sort_values(by='score', ascending=False).index]
 
 # sns.heatmap(fv_agg.layers['msp_coverage'] / np.array(fv_agg.obs.n_seqs)[:, np.newaxis])
 sns.heatmap(fv_agg.layers['msp_coverage'] / fv_agg.layers['read_coverage'])
@@ -208,3 +213,22 @@ temp2 = np.sum(temp, axis=0)
 sns.scatterplot(x=fv_agg.var.pos, y=temp2)
 
 sns.lineplot(x=fv_agg.var.pos, y=fv_agg.layers['read_coverage'][0,:]/10)
+
+
+# -----------------------------------------------
+
+fview = fv.FiberView(bamfile, anno_df.iloc[[13]], window=(-1500, 500), fully_span=False)
+
+
+fv_agg = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10, 
+                            obs_to_keep=['seqid', 'pos', 'strand', 'gene_id', 'score'],
+                            fast=True)
+
+fv.tools.filter_regions(fview, base_name='msp', length_limits=(20, np.inf))
+
+
+fv_agg2 = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='read_name', bin_width=10, 
+                            obs_to_keep=['seqid', 'pos', 'strand', 'gene_id', 'score'],
+                            fast=True)
+
+

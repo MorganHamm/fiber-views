@@ -18,6 +18,7 @@ import anndata as ad
 
 import os
 import sys
+import time
 import warnings
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -197,9 +198,13 @@ def make_region_densities(fview, base_name = 'nuc'):
     pass
     
     
+    
+ 
 def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10, 
-                       obs_to_keep=['seqid', 'pos', 'strand', '']):
+                       obs_to_keep=['seqid', 'pos', 'strand', ''], fast=True):
     # obs_to_keep should be a list of column names, should not be read specific
+    # if fast is True, mod matrices will be converted to dense for calculation
+    t_start = time.time()
     if obs_group_var is None:
         # if None is passed to obs_group_var, process each row individually
         fview.obs['row'] = range(len(fview))
@@ -221,38 +226,48 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
     new_adata.uns['bin_width'] = bin_width
     del(new_adata.uns['region_report_interval'])
     # count occurence of each base in each bin
+    print("bases_and_mods")
+    
+    # initialize layers
     for base in [b'A', b'C', b'G', b'T']:
         layer_name = "{}_count".format(base.decode())
         new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=int)
-        for i, group in enumerate(list(new_adata.obs.index)):
-            for j in list(range(new_adata.shape[1])):
-                new_adata.layers[layer_name][i, j] = \
-                    np.sum(fview.layers['seq'][fview.obs[obs_group_var] == group, 
-                                                j*bin_width:(j+1)*bin_width]  == base
-                           )
-    new_adata.layers['read_coverage'] = new_adata.layers['A_count'] + \
-        new_adata.layers['C_count'] + new_adata.layers['G_count'] + \
-        new_adata.layers['T_count']
-    # aggregate mod count by bin
+    
+    mod_matrices = {}
     for mod in fview.uns['mods']:
+        if fast:
+            mod_matrices[mod] = np.array(fview.layers[mod].toarray())
+        else:
+            mod_matrices[mod] = fview.layers[mod]
         layer_name = "{}_count".format(mod)
         new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=int)
-        for i, group in enumerate(list(new_adata.obs.index)):
-            for j in list(range(new_adata.shape[1])):
-                new_adata.layers[layer_name][i, j] = \
-                    np.sum(fview.layers[mod][fview.obs[obs_group_var] == group, 
-                                    j*bin_width:(j+1)*bin_width]
-                           )
-    # count cpg sites per bin
     layer_name = "cpg_site_count"
     new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=int)
+    # agg bases and mods
     for i, group in enumerate(list(new_adata.obs.index)):
-        for j in list(range(new_adata.shape[1])):
+        for j in np.arange(new_adata.shape[1]):
+            rows = fview.obs[obs_group_var] == group
+            bin_start = j*bin_width
+            bin_end = (j+1)*bin_width
+            for base in [b'A', b'C', b'G', b'T']: 
+                layer_name = "{}_count".format(base.decode())
+                new_adata.layers[layer_name][i, j] = \
+                    np.sum(fview.layers['seq'][rows, bin_start:bin_end] == base)
+            for mod in fview.uns['mods']:
+                 layer_name = "{}_count".format(mod)
+                 new_adata.layers[layer_name][i, j] = \
+                     np.sum(mod_matrices[mod][rows, bin_start:bin_end])
+            layer_name = "cpg_site_count"
             new_adata.layers[layer_name][i, j] = \
-                np.sum(fview.layers['cpg_sites'][fview.obs[obs_group_var] == group, 
-                                j*bin_width:(j+1)*bin_width]
-                       )
+                np.sum(fview.layers['cpg_sites'][rows, bin_start:bin_end])
+    new_adata.layers['read_coverage'] = new_adata.layers['A_count'] + \
+         new_adata.layers['C_count'] + new_adata.layers['G_count'] + \
+         new_adata.layers['T_count']
+         
+    t_end = time.time()
+    print(t_end - t_start)
     # aggregate regions
+    print("regions")
     for region_type in fview.uns['region_base_names']:
         layer_name = "{}_coverage".format(region_type)
         new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=float)
@@ -279,10 +294,10 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
             if reg_end_bin != new_adata.shape[1]:
                 new_adata.layers[layer_name][i, reg_end_bin] += \
                     (reg_bound_end % bin_width) * region.score    
+    t_end = time.time()
+    print(t_end - t_start)
     return(new_adata)
 
-
-    
     
     
     
