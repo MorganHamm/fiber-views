@@ -58,5 +58,5 @@ end_time = time.time()
 print("time to summarize: {} minutes".format( (end_time - start_time)/60  ))
 
 
-
+print("saving summary data")
 sdata.write_h5ad("local/all_genes_summary.h5ad")
