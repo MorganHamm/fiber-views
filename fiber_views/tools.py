@@ -204,16 +204,19 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
                        obs_to_keep=['seqid', 'pos', 'strand', ''], fast=True):
     # obs_to_keep should be a list of column names, should not be read specific
     # if fast is True, mod matrices will be converted to dense for calculation
-    t_start = time.time()
+    t_start = time.time()   
     if obs_group_var is None:
         # if None is passed to obs_group_var, process each row individually
-        fview.obs['row'] = range(len(fview))
         obs_group_var = 'row'
-    if not obs_group_var in obs_to_keep:
-        obs_to_keep.append(obs_group_var)
-    obs_to_keep = [col  for col in obs_to_keep if col in fview.obs.columns]
-    new_obs = fview.obs[obs_to_keep].groupby([obs_group_var]).first()
-    new_obs['n_seqs'] = fview.obs.groupby([obs_group_var]).count().iloc[:,1]
+        new_obs = fview.obs.copy()
+        new_obs['row'] = new_obs.index
+        new_obs['n_seqs'] = 1
+    else:
+        if not obs_group_var in obs_to_keep:
+            obs_to_keep.append(obs_group_var)
+        obs_to_keep = [col  for col in obs_to_keep if col in fview.obs.columns]    
+        new_obs = fview.obs[obs_to_keep].groupby([obs_group_var]).first()
+        new_obs['n_seqs'] = fview.obs.groupby([obs_group_var]).count().iloc[:,1]
     # the value in var.pos is the pos at the start of each window.
     new_var = pd.DataFrame({"pos" : list(range(fview.var.pos[0], 
                                                fview.var.pos[fview.shape[1]-1]+1,
@@ -274,7 +277,7 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
         region_df = make_region_df(fview, base_name=region_type, zero_pos='left')
         for m, region in region_df.iterrows():
             group = fview.obs[obs_group_var][region.row]
-            i = new_adata.obs.index.get_loc(group)
+            i = new_adata.obs.index.get_loc(str(group))
             reg_bound_start = max(0, region.start)
             reg_bound_end = min(region.start + region.length, bin_width * new_adata.shape[1])
             reg_start_bin = reg_bound_start // bin_width

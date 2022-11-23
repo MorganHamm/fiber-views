@@ -63,6 +63,9 @@ dend = dendrogram(Z)
 temp_view = temp_view[hierarchy.leaves_list(Z), :]
 temp_view.obs['kmer_cluster'] = dend['leaves_color_list']
 
+# bin
+temp_binned = fv.tools.agg_by_obs_and_bin(temp_view, obs_group_var=None, bin_width=20,
+                                          obs_to_keep=temp_view.obs.columns)
 
 # define the features to cluster by
 fv_filt = temp_view.copy() # make a copy so regions are not removed from original
