@@ -19,8 +19,6 @@ from sklearn.cluster import KMeans
 
 import seaborn as sns
 
-
-
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.cluster import hierarchy
 
@@ -49,7 +47,7 @@ all_genes = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=True
 gene_ids = pd.unique(all_genes.obs.gene_id)
 
 # create a subset object of 1 particular gene
-temp_view = all_genes[all_genes.obs.gene_id == gene_ids[21]]
+temp_view = all_genes[all_genes.obs.gene_id == gene_ids[61]]
 
 # region plot of temp_view
 fv.tools.simple_region_plot(temp_view)
@@ -62,16 +60,16 @@ Z = linkage(distance.squareform(temp_view.obsp['kmer_dist']))
 dend = dendrogram(Z)
 temp_view = temp_view[hierarchy.leaves_list(Z), :]
 temp_view.obs['kmer_cluster'] = dend['leaves_color_list']
+# temp_view = temp_view[temp_view.obs.kmer_cluster == "C1"]
 
-# bin
-temp_binned = fv.tools.agg_by_obs_and_bin(temp_view, obs_group_var=None, bin_width=20,
-                                          obs_to_keep=temp_view.obs.columns)
 
 # define the features to cluster by
-fv_filt = temp_view.copy() # make a copy so regions are not removed from original
-fv.tools.filter_regions(fv_filt, 'msp', (80, np.inf))
-clust_feats = fv.tools.make_dense_regions(fv_filt, 'msp')
-
+fv_filt = fv.tools.filter_regions(temp_view, 'msp', (80, np.inf))
+temp_binned = fv.tools.agg_by_obs_and_bin(fv_filt, obs_group_var=None, bin_width=20,
+                                          obs_to_keep=temp_view.obs.columns)
+# clust_feats = fv.tools.make_dense_regions(fv_filt, 'msp')
+# clust_feats = fv.tools.make_dense_regions(temp_view, 'msp')[:, 3000:]
+clust_feats = temp_binned.layers['msp_coverage']
 
 # run pca
 pca = PCA(n_components=None, whiten=False)
@@ -88,19 +86,26 @@ temp_view.obs['PC2'] = temp_view.obsm['PCA'][:,1]
 temp_view.obs['PC3'] = temp_view.obsm['PCA'][:,2]
 
 # k-means clustering
-kmeans = KMeans(n_clusters=4, random_state=0).fit(transf[:,0:5])
+kmeans = KMeans(n_clusters=5, random_state=0).fit(temp_view.obsm['PCA'][:,0:3])
 temp_view.obs['km_clust'] = kmeans.labels_
-sns.scatterplot(data=temp_view.obs, x='PC1', y='PC2', hue='km_clust', palette="tab10")
+sns.scatterplot(data=temp_view.obs, x='PC1', y='PC3', hue='km_clust', palette="tab10")
 
 # re-order and plot
 temp_view3 = temp_view[temp_view.obs.sort_values(by='km_clust').index]
+temp_view3 = fv_filt[temp_view.obs.sort_values(by='km_clust').index] # show the filtered view
 fv.tools.simple_region_plot(temp_view3)
 
 
 # aggregate each cluster, and plot a heatmap of MSP coverage
+temp_view3 = temp_view[temp_view.obs.sort_values(by='km_clust').index]
 temp_view3.obs['clust'] = temp_view3.obs['km_clust'].astype(str)
 clust_agg = fv.tools.agg_by_obs_and_bin(temp_view3, obs_group_var='clust', bin_width=10, 
                             obs_to_keep=['seqid', 'pos', 'strand', 'gene_id', 'score'])
 sns.heatmap(clust_agg.layers['msp_coverage'] / clust_agg.layers['read_coverage'])
+
+
+# plot the component loadings of the first 10 PCs
+sns.heatmap(pca.components_[0:10, ], cmap="PiYG", center=0)
+
 
 

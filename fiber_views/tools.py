@@ -169,18 +169,25 @@ def make_dense_regions(fview, base_name = 'nuc', report="score"):
  
     
 def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf), 
-                   score_limits = (-np.inf, np.inf)):
-    # filters in place
+                   score_limits = (-np.inf, np.inf), inplace=False):
+    # filters regions witg base_name by length and score limits
+    if inplace:
+        fview_out = fview
+    else:
+        fview_out = fview.copy()
     region_df = make_region_df(fview, base_name=base_name)
     region_df = region_df[(region_df.length > length_limits[0]) &
                           (region_df.length < length_limits[1]) &
                           (region_df.score > score_limits[0]) &
                           (region_df.score < score_limits[1])]
     pos_array, len_array, score_array = utils.make_sparse_regions(region_df, fview.shape)
-    fview.layers["{}_pos".format(base_name)] = pos_array.tocsr()
-    fview.layers["{}_len".format(base_name)] = len_array.tocsr()
-    fview.layers["{}_score".format(base_name)] = score_array.tocsr()
-    return(None)
+    fview_out.layers["{}_pos".format(base_name)] = pos_array.tocsr()
+    fview_out.layers["{}_len".format(base_name)] = len_array.tocsr()
+    fview_out.layers["{}_score".format(base_name)] = score_array.tocsr()
+    if inplace:
+        return(None)
+    else:
+        return(fview_out)
      
     
 def bin_sparse_regions(fview, base_name = 'nuc', bin_width = 10, interval = 3):
@@ -210,6 +217,7 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
         obs_group_var = 'row'
         new_obs = fview.obs.copy()
         new_obs['row'] = new_obs.index
+        fview.obs['row'] = fview.obs.index # necessary for getting right row
         new_obs['n_seqs'] = 1
     else:
         if not obs_group_var in obs_to_keep:
