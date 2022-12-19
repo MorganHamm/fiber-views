@@ -32,7 +32,19 @@ class ReadList(list):
     """
     A simple list of pysam.libcalignedsegment.PileupRead objects, plus methods
     useful for constructing anndata elements from the read objects. also tracks
-    strand info of the genomic query position
+    strand info of the genomic query position.
+    
+    Parameters
+    ----------
+    normal_list : list, optional
+        A list of pysam.libcalignedsegment.PileupRead objects. The default is [].
+    strand : str, optional
+        The strand of the genomic query position. The default is "+".
+    
+    Attributes
+    ----------
+    strand : str
+        The strand of the genomic query position.
     """
 
     def __init__(self, normal_list=[], strand="+"):
@@ -41,7 +53,26 @@ class ReadList(list):
         self.extend(normal_list)
 
     def get_reads(self, alignment_file, ref_pos):
-        """Example: reads=ReadList().get_reads(bamfile, ('chr3', 200000, '+'))
+        """
+        Retrieve reads from a BAM file for a given reference position.
+        
+        Parameters
+        ----------
+        alignment_file : pysam.AlignmentFile
+            A BAM file opened with pysam.
+        ref_pos : tuple
+            A tuple containing the reference name, position, and strand of the
+            genomic query position. The tuple should be of the form
+            (reference_name, position, strand).
+            
+        Returns
+        -------
+        self : ReadList
+            The `ReadList` object with the reads and strand information.
+            
+        Example
+        -------
+        reads = ReadList().get_reads(bamfile, ('chr3', 200000, '+'))
         """
         pileup_iter = alignment_file.pileup(
             ref_pos[0], ref_pos[1], ref_pos[1] + 1)
@@ -59,10 +90,27 @@ class ReadList(list):
         return(self)
 
     def filter_by_window(self, window, inplace=False, strand=None):
-        """remove reads that don't fully span a window of +/- window_offset.
-            if inplace == True: this instance is modified, else: a new ReadList 
-            object is returned"""
-        # window = (-window_offset, window_offset)
+        """
+        Remove reads that do not fully span a given window of +/- window_offset.
+        
+        Parameters
+        ----------
+        window : tuple
+            A tuple of integers representing the window of +/- window_offset. The
+            tuple should be of the form (window_start, window_end).
+        inplace : bool, optional
+            If True, the `ReadList` object is modified in place. If False, a new
+            `ReadList` object is returned. The default is False.
+        strand : str, optional
+            The strand of the genomic query position. If not provided, the strand
+            information of the `ReadList` object is used. The default is None.
+            
+        Returns
+        -------
+        None or ReadList
+            If `inplace` is True, returns None. If `inplace` is False, returns
+            a new `ReadList` object with the filtered reads and strand information.
+        """
         window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
@@ -78,9 +126,29 @@ class ReadList(list):
             return(ReadList(list_out, self.strand))
 
     def filter_by_end_meth(self, dist=3000, cutoff=2, inplace=False):
-        """remove reads if they have fewer than [cutoff] m6A mods within [dist] base 
-        pairs of the read start and end
         """
+        Remove reads if they have fewer than [cutoff] m6A mods within [dist] base 
+        pairs of the read start and end.
+        
+        Parameters
+        ----------
+        dist : int, optional
+            The distance in base pairs from the read start and end to consider.
+            The default is 3000.
+        cutoff : int, optional
+            The minimum number of m6A mods within [dist] base pairs of the read 
+            start and end required to keep the read. The default is 2.
+        inplace : bool, optional
+            If True, the `ReadList` object is modified in place. If False, a new
+            `ReadList` object is returned. The default is False.
+            
+        Returns
+        -------
+        None or ReadList
+            If `inplace` is True, returns None. If `inplace` is False, returns
+            a new `ReadList` object with the filtered reads and strand information.
+        """
+
         list_out = []
         for read in self:
             mods = get_strand_correct_mods(read)
@@ -98,9 +166,28 @@ class ReadList(list):
         
 
     def build_seq_array(self, window, strand=None):
-        # create a byte array of the sequences.
-        # warning, filter reads first
-        # window = (-window_offset, window_offset)
+        """
+        Create a byte array of the sequences for the reads in the `ReadList` object.
+        
+        Parameters
+        ----------
+        window : tuple
+            A tuple of integers representing the window of +/- window_offset. The
+            tuple should be of the form (window_start, window_end).
+        strand : str, optional
+            The strand of the genomic query position. If not provided, the strand
+            information of the `ReadList` object is used. The default is None.
+            
+        Returns
+        -------
+        char_array : numpy array
+            A byte array of the sequences for the reads in the `ReadList` object.
+            
+        Notes
+        -----
+        Make sure to filter the reads in the `ReadList` object before using this 
+        method.
+        """
         window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
@@ -124,7 +211,32 @@ class ReadList(list):
 
     def build_mod_array(self, window, mod_type=M6A_MODS, strand=None,
                         sparse=True, score_cutoff=200):
-        # window = (-window_offset, window_offset)
+        """
+        Create a base modification matrix for the reads in the `ReadList` object.
+        
+        Parameters
+        ----------
+        window : tuple
+            A tuple of integers representing the window of +/- window_offset. The
+            tuple should be of the form (window_start, window_end).
+        mod_type : list, optional
+            A list of tuples representing the base modification type to consider.
+            The default is M6A_MODS.
+        strand : str, optional
+            The strand of the genomic query position. If not provided, the strand
+            information of the `ReadList` object is used. The default is None.
+        sparse : bool, optional
+            If True, the base odification matrix is returned in sparse format. If 
+            False, the matrix is returned in dense format. The default is True.
+        score_cutoff : int, optional
+            The minimum score required for a base modification to be considered. The
+            default is 200.
+            
+        Returns
+        -------
+        mod_mtx : numpy array or scipy sparse matrix
+            A base modification matrix for the reads in the `ReadList` object.
+        """
         window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
@@ -149,52 +261,32 @@ class ReadList(list):
             mod_mtx = mod_mtx.toarray()
         return(mod_mtx)
 
-    def build_region_array(self, window_offset, tags=('ns', 'nl'), strand=None):
-        # NOT USED, REPLACED BY build_sparse_region_array
-        if strand is None:
-            strand = self.strand
-        rows = []
-        for i, read in enumerate(self):
-            starts, lengths, scores = get_strand_correct_regions(
-                read, tags=tags, centered=True)
-            starts = np.array(starts) + window_offset
-            if strand == "-":
-                starts = np.flip(2 * window_offset - starts)
-                lengths = np.flip(lengths)
-                scores = np.flip(scores)
-            # filter for regions that overlap the window
-            filtered_regions = []
-            for region in zip(starts, lengths, scores):
-                if region[0] < 0:
-                    if region[0] + region[1] > 0:
-                        # regions that overlap the start of the window
-                        region = (0, region[1]+region[0], region[2])
-                    else:
-                        continue
-                if region[0] < 2*window_offset - 1:
-                    if region[0] + region[1] > 2*window_offset:
-                        # regions that overlap the end of the window
-                        region = (region[0], 2*window_offset -
-                                  region[0], region[2])
-                    filtered_regions.append(region)
-            # construct a row of the matrix
-            row = []
-            last_end = 0
-            for region in filtered_regions:
-                row = row + list(repeat(0, region[0] - last_end)) + \
-                    list(repeat(region[2], region[1]))
-                last_end = region[0] + region[1]
-            row = row + list(repeat(0, 2*window_offset - last_end))
-            rows.append(np.array(row, dtype='int8'))
-        region_array = np.vstack(rows)
-        return(region_array)
 
     def build_sparse_region_array(self, window, tags=('ns', 'nl'),
                                   interval=30, strand=None):
-        # interval specifies how frequently to report region info.
-        # this determines the minimum window size that can be subset to
-        # that still preserves region info.
-        # window = (-window_offset, window_offset)
+        """
+        Create a sparse region matrix for the reads in the `ReadList` object.
+        
+        Parameters
+        ----------
+        window : tuple
+            A tuple of integers representing the window of +/- window_offset. The
+            tuple should be of the form (window_start, window_end).
+        tags : tuple, optional
+            A tuple of tags to consider. The default is ('ns', 'nl').
+        interval : int, optional
+            The interval at which to report region information. This determines
+            the minimum window size that can be subset to that still preserve
+            region info. The default is 30.
+        strand : str, optional
+            The strand of the genomic query position. If not provided, the strand
+            information of the `ReadList` object is used. The default is None.
+            
+        Returns
+        -------
+        region_mtx : scipy sparse matrix
+            A sparse region matrix for the reads in the `ReadList` object.
+        """
         window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
@@ -221,6 +313,21 @@ class ReadList(list):
                                    interval=interval))
 
     def build_anno_df(self, anno_series, tags=['np', 'ec', 'rq']):
+        """
+        Create a data frame with annotation data for the reads in the `ReadList` object.
+        
+        Parameters
+        ----------
+        anno_series : pandas Series
+            A pandas Series containing annotation data for the genomic query position.
+        tags : list, optional
+            A list of tags to include in the data frame. The default is ['np', 'ec', 'rq'].
+            
+        Returns
+        -------
+        df : pandas DataFrame
+            A data frame with annotation data for the reads in the `ReadList` object.
+        """
         row_data_dict = anno_series.to_dict()
         row_data_dict['read_name'] = [
             read.alignment.query_name for read in self]
@@ -235,7 +342,19 @@ class ReadList(list):
         return(pd.DataFrame(row_data_dict))
 
     def print_aligned_centers(self, offset=5):
-        # test function to make sure reads are aligning correctly
+        """
+        Print the center positions of the reads in the `ReadList` object with a specified number of bases on either side.
+        This is a test function to make sure reads are aligning correctly
+        
+        Parameters
+        ----------
+        offset : int, optional
+            The number of bases on either side of the center position to include in the output. The default is 5.
+            
+        Returns
+        -------
+        None
+        """
         for i, read in enumerate(self):
             center_pos = read.query_position
             alignment = read.alignment
@@ -249,6 +368,29 @@ class ReadList(list):
 # =============================================================================
 
 def get_mod_pos_from_rec(rec, mods=M6A_MODS, score_cutoff=200):
+    """
+    Retrieve positions of modified bases in a record.
+    
+    Parameters
+    ----------
+    rec : pysam.libcalignedsegment.AlignedSegment
+        A record containing modified bases.
+    mods : list, optional
+        A list of modified bases to consider, in the form (base, index, code).
+        The default is M6A_MODS.
+    score_cutoff : int, optional
+        The minimum score required for a modified base to be included.
+        The default is 200.
+        
+    Returns
+    -------
+    mod_positions : numpy.ndarray
+        An array of positions of modified bases.
+        
+    Example
+    -------
+    mod_positions = get_mod_pos_from_rec(read.alignment)
+    """
     # from Mitchell's extract_bed_from_bam.py (modified)
     # rec should be a pysam.libcalignedsegment.AlignedSegment (PileupRead.alignment)
     if rec.modified_bases_forward is None:
@@ -269,6 +411,27 @@ def get_mod_pos_from_rec(rec, mods=M6A_MODS, score_cutoff=200):
 
 
 def print_mod_contexts(read, mod_positions, offset=5, use_strand=True):
+    """
+    Print the contexts surrounding modified bases in a read.
+    
+    Parameters
+    ----------
+    read : pysam.libcalignedsegment.AlignedSegment
+        A read containing modified bases.
+    mod_positions : numpy.ndarray
+        An array of positions of modified bases in the read.
+    offset : int, optional
+        The number of bases on either side of the modified base to include in
+        the context. The default is 5.
+    use_strand : bool, optional
+        Whether to use the strand information in the read to determine the
+        context. If True, the context will be reversed if the read is on the
+        negative strand. The default is True.
+        
+    Example
+    -------
+    print_mod_contexts(read, mod_positions)
+    """
     # test function make sure mods are aligned correctly
     alignment = read.alignment
     for i, mod_pos in enumerate(mod_positions):
@@ -282,6 +445,32 @@ def print_mod_contexts(read, mod_positions, offset=5, use_strand=True):
 
 
 def get_strand_correct_mods(read, mod_type=M6A_MODS, centered=False, score_cutoff=200):
+    """
+    Retrieve modified bases in a read and correct their positions to match the forward genomic strand.
+    
+    Parameters
+    ----------
+    read : pysam.libcalignedsegment.AlignedSegment
+        A read containing modified bases.
+    mod_type : list, optional
+        A list of modified bases to consider, in the form (base, index, code).
+        The default is M6A_MODS.
+    centered : bool, optional
+        Whether to center the positions around the query position of the read.
+        The default is False.
+    score_cutoff : int, optional
+        The minimum score required for a modified base to be included.
+        The default is 200.
+        
+    Returns
+    -------
+    mods : numpy.ndarray
+        An array of positions of modified bases, corrected for strand.
+        
+    Example
+    -------
+    mods = get_strand_correct_mods(read)
+    """
     # get modification positions and correct them to match the forward genomic strand
     raw_mods = get_mod_pos_from_rec(
         read.alignment, mods=mod_type, score_cutoff=score_cutoff)
@@ -302,8 +491,33 @@ def get_strand_correct_mods(read, mod_type=M6A_MODS, centered=False, score_cutof
 
 
 def get_strand_correct_regions(read, tags=('ns', 'nl'), centered=False):
-    # get starts, lengths and scores on the forward genomic strand for a
-    # single read
+    """
+    Retrieve start positions, lengths, and scores of regions in a read and correct them to match the forward genomic strand.
+    
+    Parameters
+    ----------
+    read : pysam.libcalignedsegment.AlignedSegment
+        A read containing regions.
+    tags : tuple, optional
+        A tuple of tags containing the start positions, lengths, and scores of the
+        regions. The default is ('ns', 'nl').
+    centered : bool, optional
+        Whether to center the positions around the query position of the read.
+        The default is False.
+        
+    Returns
+    -------
+    starts : numpy.ndarray
+        An array of start positions of regions, corrected for strand.
+    lengths : numpy.ndarray
+        An array of lengths of regions.
+    scores : numpy.ndarray
+        An array of scores of regions.
+        
+    Example
+    -------
+    starts, lengths, scores = get_strand_correct_regions(read)
+    """
     for tag in tags:
         if not read.alignment.has_tag(tag):
             # return empty lists if any tag is missing
@@ -332,7 +546,20 @@ def get_strand_correct_regions(read, tags=('ns', 'nl'), centered=False):
 
 
 def read_bed(bed_file):
-    # bed file should follow bed standard and not include column names
+    """
+    Read a BED file and return a pandas DataFrame.
+
+    Parameters
+    ----------
+    bed_file : str
+        The file path of the BED file to be read.
+        The bed file should follow bed standard and not include column names.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame containing the data from the BED file.
+    """
     bed_data = pd.read_csv(bed_file, sep="\t", header=None)
     BED_HEADER = ['chrom', 'start', 'end', 'name', 'score', 'strand', 'thick_start',
                   'thick_end', 'item_rgb', 'block_count', 'block_widths', 'block_starts']
@@ -341,6 +568,21 @@ def read_bed(bed_file):
 
 
 def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
+    """
+    Convert a data frame in BED format to another data frame with a different layout.
+    
+    Parameters
+    ----------
+    bed_df : pandas.DataFrame
+        Data frame in BED format, with columns 'chrom', 'start', 'end', 'strand', 'name', and 'score'.
+    entry_name_type : str, optional
+        Column name for the unique identifier for each feature. The default is "gene_id".
+    
+    Returns
+    -------
+    anno_df : pandas.DataFrame
+        Data frame with columns 'seqid', 'pos', 'strand', 'entry_name_type', and 'score'.
+    """
     anno_df = pd.DataFrame({
         "seqid": bed_df.chrom,
         "pos": bed_df.start * (bed_df.strand == "+") +
@@ -353,9 +595,40 @@ def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
 
    
 def make_sparse_regions(region_df, shape, bin_width = 1, interval = 30):
-    # interval is in # of bins, not bp
-    # pos values are still in base pairs after binning. and may be negative for the first reported pos of a region
-    # shape is the data shape before binning
+    """Make a sparse matrix representing genomic regions.
+
+    This function takes a DataFrame containing region information, as well as the
+    shape of the resulting matrix and other parameters, and returns three sparse
+    matrices representing the positions, lengths, and scores of the regions within
+    the matrix.
+
+    Parameters
+    ----------
+    region_df : pandas.DataFrame
+        A DataFrame containing the region information. The DataFrame should have
+        columns for `row`, `start`, `length`, and `score`, representing the row
+        index of the matrix, the starting position of the region (0-based), the
+        length of the region, and the score associated with the region, respectively.
+    shape : tuple
+        The shape of the resulting matrix before binning. The first element should be the number
+        of rows in the matrix, and the second element should be the number of
+        columns.
+    bin_width : int, optional
+        The width of each bin in the resulting matrix, in base pairs. The default
+        is 1.
+    interval : int, optional
+        The interval at which to report region information. This determines the
+        minimum window size that can be subset to that still preserve region info.
+        The default is 30. interval is in number of bins, not bp
+
+    Returns
+    -------
+    tuple of scipy.sparse.coo_matrix
+        A tuple containing three sparse matrices representing the positions,
+        lengths, and scores of the regions within the matrix. The matrices are in
+        the form of COO sparse matrices. position values are still in base pairs 
+        after binning. and may be negative for the first reported pos of a region
+    """
     I = []  # row index in matrix
     J = []  # column index in matrix
     P = []  # position along region
