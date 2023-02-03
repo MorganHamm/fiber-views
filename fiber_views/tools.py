@@ -376,18 +376,18 @@ def bin_sparse_regions(fview, base_name = 'nuc', bin_width = 10, interval = 3):
     return(results)
 
 
-def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
+def agg_by_obs_and_bin(fview, obs_group_vars=['site_name'], bin_width=10,
                        obs_to_keep=['seqid', 'pos', 'strand', ''], fast=True):
     """
-    Aggregate fiber view data by a group variable in the `obs` dataframe and bin by `bin_widht` basepairs.
+    Aggregate fiber view data by a group variable in the `obs` dataframe and bin by `bin_width` basepairs.
 
     Parameters
     ----------
     fview : anndata.AnnData
         The fiber view object containing the data to be aggregated.
-    obs_group_var : str, optional
+    obs_group_vars : List[str], optional
         The name of the `obs` group variable to use for aggregation. The default value is 'site_name'.
-        If `obs_group_var` is set to None, the fiber view will not be aggregated by rows and the row ordering will
+        If `obs_group_vars` is set to None, the fiber view will not be aggregated by rows and the row ordering will
         be preserved.
     bin_width : int, optional
         The width of each bin, in base pairs. The default value is 10.
@@ -414,11 +414,13 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
         fview.obs['row'] = fview.obs.index # necessary for getting right row
         new_obs['n_seqs'] = 1
     else:
-        if not obs_group_var in obs_to_keep:
-            obs_to_keep.append(obs_group_var)
+        new_obs =
+        for obs_group_var in obs_group_vars:
+            if not obs_group_var in obs_to_keep:
+                obs_to_keep.append(obs_group_var)
         obs_to_keep = [col  for col in obs_to_keep if col in fview.obs.columns]
-        new_obs = fview.obs[obs_to_keep].groupby([obs_group_var]).first()
-        new_obs['n_seqs'] = fview.obs.groupby([obs_group_var]).count().iloc[:,1]
+        new_obs = fview.obs[obs_to_keep].groupby([obs_group_vars]).first()
+        new_obs['n_seqs'] = fview.obs.groupby([obs_group_vars]).count().iloc[:,1]
     # the value in var.pos is the pos at the start of each window.
     new_var = pd.DataFrame({"pos" : list(range(fview.var.pos[0],
                                                fview.var.pos[fview.shape[1]-1]+1,

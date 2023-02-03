@@ -22,31 +22,35 @@ from scipy.spatial import distance
 
 # -----------------------------------------------------------------------------
 
-
-os.chdir('/net/gs/vol1/home/joemin/rotation_projects/W23_fiber_het/analysis_code/fiber_views')
-
+root_dir = '/net/gs/vol1/home/joemin/rotation_projects/W23_fiber_het/analysis_code/fiber_views'
+os.chdir(root_dir)
 
 # -----------------------------------------------------------------------------
-# basic reading from bam file and summarizing
-
-
 bamfile = pysam.AlignmentFile('local/aligned.fiberseq.bam', 'rb')
 
-anno_df = pd.read_csv('/net/gs/vol1/home/joemin/extractions/ATCOPIA78/ATCOPIA78LTR_msa.csv')
+output_dir = f'{root_dir}/figures'
+family_name = 'ATCOPIA78'
+endings = ['LTR']
+ending = endings[0]
+anno_df = pd.read_csv(f'/net/gs/vol1/home/joemin/te_extractions/{family_name}/{family_name}{ending}_msa.csv')
 
-# bed_data = fv.read_bed('local/TAIR10_genes.bed')
-# anno_df = fv.bed_to_anno_df(bed_data)
-# anno_df.query('seqid == "chr3" & pos < 200000', inplace=True)
+all_positions = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=False)
 
-all_genes = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=True)
-
-# make a list of all gene ids in the all_genes object
-gene_ids = pd.unique(all_genes.obs.gene_id)
-
-# create a subset object of 1 particular gene
-temp_view = all_genes[all_genes.obs.gene_id == gene_ids[69]]
-
-# region plot of temp_view
-plot = fv.tools.simple_region_plot(temp_view)
+# Unique positions correspond with the individual loci (e.g. the ~900 loci for ONSEN LTR)
+pos_s = pd.unique(all_positions.obs.pos)
+single_position_view = all_genes[all_positions.obs.pos == pos_s[0]]
+plot = fv.tools.simple_region_plot(single_position_view)
 fig = plot.get_figure()
-fig.savefig('test.png')
+fig.savefig(f'{output_dir}{family_name}{ending}.svg') # For saving in different formats: https://www.marsja.se/how-to-save-a-seaborn-plot-as-a-file-e-g-png-pdf-eps-tiff/
+
+# fv_filt = fv.tools.filter_regions(temp_view, 'msp', (100, np.inf))
+binned_by_position_view = fv.tools.agg_by_obs_and_bin(single_position_view, obs_group_var=['seqid', 'pos'], bin_width=20,
+                                          obs_to_keep=all_genes.obs.columns)
+plot = fv.tools.simple_region_plot(binned_by_position_view)
+fig = plot.get_figure()
+fig.savefig(f'{output_dir}{family_name}{ending}_binned.svg')
+print(binned_by_position_view.head)
+
+# clust_feats = fv.tools.make_dense_regions(fv_filt, 'msp')
+# clust_feats = fv.tools.make_dense_regions(temp_view, 'msp')
+# clust_feats = temp_binned.layers['msp_coverage']
