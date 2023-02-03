@@ -51,16 +51,16 @@ from . import utils
 def count_kmers(fiber_view, k):
     """
     Count k-mers in each fiber in a fiber view.
-    
+
     This function counts the occurrences of k-mers in each fiber in a fiber view, and stores the resulting k-mer counts in the 'kmers' element of the `obsm` attribute of the fiber view. The length of the k-mers (`k`) and the mapping from k-mer strings to column indices in the k-mer count matrix are stored in the 'kmer_len' and 'kmer_idx' elements of the `uns` attribute, respectively.
-    
+
     Parameters
     ----------
     fiber_view : anndata.AnnData
         Fiber view object containing DNA sequence data in the 'seq' element of the `layers` attribute.
     k : int
         Length of the k-mers to count.
-    
+
     Returns
     -------
     None
@@ -86,16 +86,16 @@ def count_kmers(fiber_view, k):
 def calc_kmer_dist(fiber_view, metric='cityblock'):
     """
     Calculate pairwise k-mer distances between fibers in a fiber view.
-    
+
     This function calculates pairwise distances between fibers in a fiber view based on the k-mer counts stored in the 'kmers' element of the `obsm` attribute. The distance metric can be specified using the `metric` parameter (default is 'cityblock'). The resulting distance matrix is stored in the 'kmer_dist' element of the `obsp` attribute of the fiber view.
-    
+
     Parameters
     ----------
     fiber_view : anndata.AnnData
         Fiber view object containing k-mer count data in the 'kmers' element of the `obsm` attribute.
     metric : str, optional
         Distance metric to use for calculating pairwise distances. The default is 'cityblock'.
-    
+
     Returns
     -------
     None
@@ -115,16 +115,16 @@ def calc_kmer_dist(fiber_view, metric='cityblock'):
 def plot_methylation(fiber_view, label_bases=False, ):
     """
     Plot a heatmap of DNA methylation levels in a fiber view.
-    
+
     This function generates a heatmap of DNA methylation levels in a fiber view, with different colors representing different methylation states (unmethylated, m6A, and 5mC). The DNA sequence for each fiber can optionally be labeled on the plot by setting the `label_bases` parameter to `True`.
-    
+
     Parameters
     ----------
     fiber_view : anndata.AnnData
         Fiber view object containing DNA methylation data in the 'm6a' and 'cpg' elements of the `layers` attribute, and DNA sequence data in the 'seq' element of the `layers` attribute.
     label_bases : bool, optional
         Whether to label each base in the DNA sequence on the plot. The default is `False`.
-    
+
     Returns
     -------
     ax : matplotlib.axes._subplots.AxesSubplot
@@ -135,11 +135,11 @@ def plot_methylation(fiber_view, label_bases=False, ):
     mod_colors = ((0.65,    0.65,   0.65,   1.0), # grey, unmetthylated
                   (0.78,    0.243,  0.725,  1.0), # purple m6a
                   (0.78,    0.243,  0.243,  1.0)) # red, cpg
-    cmap = LinearSegmentedColormap.from_list('Custom', mod_colors, 
+    cmap = LinearSegmentedColormap.from_list('Custom', mod_colors,
                                              len(mod_colors))
     if label_bases:
-        ax = sns.heatmap(mod_mtx, cmap=cmap, 
-                         annot=fiber_view.layers['seq'].astype('U1'), fmt = '', 
+        ax = sns.heatmap(mod_mtx, cmap=cmap,
+                         annot=fiber_view.layers['seq'].astype('U1'), fmt = '',
                          annot_kws={'size' : 8})
     else:
         ax = sns.heatmap(mod_mtx, cmap=cmap)
@@ -154,29 +154,29 @@ def plot_methylation(fiber_view, label_bases=False, ):
 def plot_summary(sdata, bin_width=10):
     """
     Plot a summary of DNA methylation levels and frequencies in a fiber view.
-    
+
     This function generates a line plot of DNA methylation levels and frequencies in a fiber view, with different lines representing different methylation states (m6A and 5mC). The data is summarized by grouping it into bins of a specified width, which can be set using the `bin_width` parameter (default is 10). The plot shows the total number of m6A and 5mC sites, as well as the frequencies of these modifications within each bin.
-    
+
     Parameters
     ----------
     sdata : anndata.AnnData
         Fiber view object containing DNA methylation data in the 'm6a' and 'cpg' elements of the `layers` attribute, and DNA sequence data in the 'seq' element of the `layers` attribute.
     bin_width : int, optional
         Width of the bins used to summarize the data. The default is 10.
-    
+
     Returns
     -------
     ax : matplotlib.axes._subplots.AxesSubplot
         Axes object for the plot.
     """
     # TODO: make this better
-    sdata.var['ATs'] = np.sum(sdata.layers['As'], axis=0).T + np.sum(sdata.layers['Ts'], axis=0).T    
-    sdata.var['CpGs'] = np.sum(sdata.layers['CpGs'], axis=0).T  
-    sdata.var['m6a'] = np.sum(sdata.layers['m6a'], axis=0).T   
+    sdata.var['ATs'] = np.sum(sdata.layers['As'], axis=0).T + np.sum(sdata.layers['Ts'], axis=0).T
+    sdata.var['CpGs'] = np.sum(sdata.layers['CpGs'], axis=0).T
+    sdata.var['m6a'] = np.sum(sdata.layers['m6a'], axis=0).T
     sdata.var['cpg'] = np.sum(sdata.layers['cpg'], axis=0).T
-    sdata.var['m6a_freq'] = sdata.var.m6a / sdata.var.ATs 
+    sdata.var['m6a_freq'] = sdata.var.m6a / sdata.var.ATs
     sdata.var['cpg_freq'] = sdata.var.cpg / sdata.var.CpGs
-    
+
     plot_data = sdata.var.copy()
     plot_data['bin'] = plot_data.pos  // bin_width
     plot_data = plot_data.groupby('bin').sum()
@@ -186,21 +186,21 @@ def plot_summary(sdata, bin_width=10):
     long_df = plot_data.melt(id_vars=['pos'])
     long_df = long_df.loc[(long_df['variable'] == 'm6a_freq') | (long_df['variable'] == 'cpg_freq')]
 
-    sns.lineplot(data=long_df, x='pos', y='value', hue='variable')
+    return sns.lineplot(data=long_df, x='pos', y='value', hue='variable')
 
 def simple_region_plot(fview, mod='m6a'):
     """
     Plot a heatmap of DNA methylation levels and DNA sequence features in a fiber view.
-    
+
     This function generates a heatmap of DNA methylation levels and DNA sequence features in a fiber view. The data is displayed using a color map that indicates the presence or absence of different features (unmodified, nucleosome, m6A, m6A+nucleosome, msp, msp+m6A). The methylation state to be plotted can be specified using the `mod` parameter, which should be set to 'm6a' (default) or 'cpg'.
-    
+
     Parameters
     ----------
     fview : anndata.AnnData
         Fiber view object containing DNA methylation data in the 'm6a' and 'cpg' elements of the `layers` attribute, and DNA sequence data in the 'seq' element of the `layers` attribute.
     mod : str, optional
         DNA methylation state to plot. Should be set to 'm6a' (default) or 'cpg'.
-    
+
     Returns
     -------
     ax : matplotlib.axes._subplots.AxesSubplot
@@ -211,12 +211,12 @@ def simple_region_plot(fview, mod='m6a'):
     # 0.5   :   nucleosome, m6A
     # 1     :   nucleosome
     # 1.5   :   msp, m6A
-    # 2     :   msp 
+    # 2     :   msp
     nucs = make_dense_regions(fview, base_name = 'nuc', report='score')
     msps = make_dense_regions(fview, base_name = 'msp', report='score')
-    sns.heatmap(nucs + msps *2 - fview.layers[mod] * 0.5 - (fview.layers['seq'] == b'-'), 
+    return sns.heatmap(nucs + msps *2 - fview.layers[mod] * 0.5 - (fview.layers['seq'] == b'-'),
                 cmap=sns.color_palette("Paired", 7), vmin=-1, vmax=2)
-    
+
 
 
 
@@ -267,7 +267,7 @@ def make_region_df(fview, base_name = 'nuc', zero_pos='left'):
         'score' : score_coo.data
         })
     return(region_df.drop_duplicates(ignore_index=True))
- 
+
 def make_dense_regions(fview, base_name = 'nuc', report="score"):
     """
     Create a dense matrix containing a representation of region infromation in a fiber view.
@@ -286,7 +286,7 @@ def make_dense_regions(fview, base_name = 'nuc', report="score"):
     -------
     numpy.ndarray
         A dense matrix of size (number of fibers, number of bases) containing the specified region data.
-        Each position in the matrix where a region is not present is set to 0, positions where ar region is present 
+        Each position in the matrix where a region is not present is set to 0, positions where ar region is present
         may be set to either the length or score value of the region occupying that position.
     """
     region_df = make_region_df(fview, base_name=base_name)
@@ -296,9 +296,9 @@ def make_dense_regions(fview, base_name = 'nuc', report="score"):
         end = min(max(region.start + region.length, 0), dense_mtx.shape[1])
         dense_mtx[region.row, start:end] = region[report]
     return(dense_mtx)
- 
-    
-def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf), 
+
+
+def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf),
                    score_limits = (-np.inf, np.inf), inplace=False):
     """
     Filter base modifications in a fiber view by length and score limits.
@@ -319,7 +319,7 @@ def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf),
     inplace : bool, optional
         If True, the function will filter the base modifications in place and return None. If False (default), the
         function will return a new fiber view.
-    
+
     Returns
     -------
     None or anndata.AnnData
@@ -344,8 +344,8 @@ def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf),
         return(None)
     else:
         return(fview_out)
-     
-    
+
+
 def bin_sparse_regions(fview, base_name = 'nuc', bin_width = 10, interval = 3):
     """
     Bin regions in a fiber view by averaging their length and score over a set of consecutive bins.
@@ -369,14 +369,14 @@ def bin_sparse_regions(fview, base_name = 'nuc', bin_width = 10, interval = 3):
         COOrdinate format sparse matrices.
     """
     region_df = make_region_df(fview, base_name=base_name, zero_pos='left')
-    results = utils.make_sparse_regions(region_df, fview.shape, 
-                                          bin_width = bin_width, 
+    results = utils.make_sparse_regions(region_df, fview.shape,
+                                          bin_width = bin_width,
                                           interval = interval)
     # returns coo matrices for pos, len, and score
     return(results)
-        
- 
-def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10, 
+
+
+def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
                        obs_to_keep=['seqid', 'pos', 'strand', ''], fast=True):
     """
     Aggregate fiber view data by a group variable in the `obs` dataframe and bin by `bin_widht` basepairs.
@@ -405,7 +405,7 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
     """
     # obs_to_keep should be a list of column names, should not be read specific
     # if fast is True, mod matrices will be converted to dense for calculation
-    t_start = time.time()   
+    t_start = time.time()
     if obs_group_var is None:
         # if None is passed to obs_group_var, process each row individually
         obs_group_var = 'row'
@@ -416,28 +416,28 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
     else:
         if not obs_group_var in obs_to_keep:
             obs_to_keep.append(obs_group_var)
-        obs_to_keep = [col  for col in obs_to_keep if col in fview.obs.columns]    
+        obs_to_keep = [col  for col in obs_to_keep if col in fview.obs.columns]
         new_obs = fview.obs[obs_to_keep].groupby([obs_group_var]).first()
         new_obs['n_seqs'] = fview.obs.groupby([obs_group_var]).count().iloc[:,1]
     # the value in var.pos is the pos at the start of each window.
-    new_var = pd.DataFrame({"pos" : list(range(fview.var.pos[0], 
+    new_var = pd.DataFrame({"pos" : list(range(fview.var.pos[0],
                                                fview.var.pos[fview.shape[1]-1]+1,
                                                              bin_width))})
     # create new AnnData object and populate uns data
     new_adata = ad.AnnData(obs=new_obs, var=new_var)
-    new_adata.X = csr_matrix(new_adata.shape) 
+    new_adata.X = csr_matrix(new_adata.shape)
     new_adata.uns = fview.uns.copy()
     new_adata.uns['is_agg'] = True
     new_adata.uns['bin_width'] = bin_width
     del(new_adata.uns['region_report_interval'])
     # count occurence of each base in each bin
     print("bases_and_mods")
-    
+
     # initialize layers
     for base in [b'A', b'C', b'G', b'T']:
         layer_name = "{}_count".format(base.decode())
         new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=int)
-    
+
     mod_matrices = {}
     for mod in fview.uns['mods']:
         if fast:
@@ -454,7 +454,7 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
             rows = fview.obs[obs_group_var] == group
             bin_start = j*bin_width
             bin_end = (j+1)*bin_width
-            for base in [b'A', b'C', b'G', b'T']: 
+            for base in [b'A', b'C', b'G', b'T']:
                 layer_name = "{}_count".format(base.decode())
                 new_adata.layers[layer_name][i, j] = \
                     np.sum(fview.layers['seq'][rows, bin_start:bin_end] == base)
@@ -468,7 +468,7 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
     new_adata.layers['read_coverage'] = new_adata.layers['A_count'] + \
          new_adata.layers['C_count'] + new_adata.layers['G_count'] + \
          new_adata.layers['T_count']
-         
+
     t_end = time.time()
     print(t_end - t_start)
     # aggregate regions
@@ -498,21 +498,21 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
             # partial bin at end of region
             if reg_end_bin != new_adata.shape[1]:
                 new_adata.layers[layer_name][i, reg_end_bin] += \
-                    (reg_bound_end % bin_width) * region.score    
+                    (reg_bound_end % bin_width) * region.score
     t_end = time.time()
     print(t_end - t_start)
     return(new_adata)
 
-    
-    
+
+
 def get_sequences(fview):
     """Returns a list of strings where each string is the sequence of one row of the fview object.
-    
+
     Parameters
     ----------
     fview : AnnData object
         The fiber view object containing the sequence data.
-    
+
     Returns
     -------
     sequences : list
@@ -521,6 +521,4 @@ def get_sequences(fview):
     sequences = []
     for i in range(fview.shape[0]):
         sequences.append(fview.layers['seq'][i].tobytes().decode("ascii"))
-    return sequences    
-    
-    
+    return sequences
