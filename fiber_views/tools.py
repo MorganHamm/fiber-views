@@ -414,7 +414,6 @@ def agg_by_obs_and_bin(fview, obs_group_vars=['site_name'], bin_width=10,
         fview.obs['row'] = fview.obs.index # necessary for getting right row
         new_obs['n_seqs'] = 1
     else:
-        new_obs =
         for obs_group_var in obs_group_vars:
             if not obs_group_var in obs_to_keep:
                 obs_to_keep.append(obs_group_var)
