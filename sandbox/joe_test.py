@@ -33,12 +33,13 @@ family_name = 'ATCOPIA78'
 endings = ['LTR']
 ending = endings[0]
 anno_df = pd.read_csv(f'/net/gs/vol1/home/joemin/te_extractions/{family_name}/{family_name}{ending}_msa.csv')
+anno_df.query('pos < 10000', inplace=True)
 
 all_positions = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=False)
 
 # Unique positions correspond with the individual loci (e.g. the ~900 loci for ONSEN LTR)
 pos_s = pd.unique(all_positions.obs.pos)
-single_position_view = all_genes[all_positions.obs.pos == pos_s[0]]
+single_position_view = all_positions[all_positions.obs.pos == pos_s[0]]
 plot = fv.tools.simple_region_plot(single_position_view)
 fig = plot.get_figure()
 fig.savefig(f'{output_dir}{family_name}{ending}.svg') # For saving in different formats: https://www.marsja.se/how-to-save-a-seaborn-plot-as-a-file-e-g-png-pdf-eps-tiff/
