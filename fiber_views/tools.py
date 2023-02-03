@@ -186,7 +186,7 @@ def plot_summary(sdata, bin_width=10):
     long_df = plot_data.melt(id_vars=['pos'])
     long_df = long_df.loc[(long_df['variable'] == 'm6a_freq') | (long_df['variable'] == 'cpg_freq')]
 
-    sns.lineplot(data=long_df, x='pos', y='value', hue='variable')
+    return sns.lineplot(data=long_df, x='pos', y='value', hue='variable')
 
 def simple_region_plot(fview, mod='m6a'):
     """
@@ -214,7 +214,7 @@ def simple_region_plot(fview, mod='m6a'):
     # 2     :   msp
     nucs = make_dense_regions(fview, base_name = 'nuc', report='score')
     msps = make_dense_regions(fview, base_name = 'msp', report='score')
-    return sns.heatmap(nucs + msps *2 - fview.layers[mod] * 0.5 - (fview.layers['seq'] == b'-'), 
+    return sns.heatmap(nucs + msps *2 - fview.layers[mod] * 0.5 - (fview.layers['seq'] == b'-'),
                 cmap=sns.color_palette("Paired", 7), vmin=-1, vmax=2)
 
 
