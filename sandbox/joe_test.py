@@ -45,7 +45,7 @@ fig = plot.get_figure()
 fig.savefig(f'{output_dir}/{family_name}{ending}.svg') # For saving in different formats: https://www.marsja.se/how-to-save-a-seaborn-plot-as-a-file-e-g-png-pdf-eps-tiff/
 
 # fv_filt = fv.tools.filter_regions(temp_view, 'msp', (100, np.inf))
-binned_by_position_view = fv.tools.agg_by_obs_and_bin(single_position_view, obs_group_var=['seqid', 'pos'], bin_width=20,
+binned_by_position_view = fv.tools.agg_by_obs_and_bin(single_position_view, obs_group_vars=['seqid', 'pos'], bin_width=20,
                                           obs_to_keep=all_positions.obs.columns)
 plot = fv.tools.simple_region_plot(binned_by_position_view)
 fig = plot.get_figure()

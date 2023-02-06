@@ -406,7 +406,8 @@ def agg_by_obs_and_bin(fview, obs_group_vars=['site_name'], bin_width=10,
     # obs_to_keep should be a list of column names, should not be read specific
     # if fast is True, mod matrices will be converted to dense for calculation
     t_start = time.time()
-    if obs_group_var is None:
+    obs_group_var = None
+    if obs_group_vars is None:
         # if None is passed to obs_group_var, process each row individually
         obs_group_var = 'row'
         new_obs = fview.obs.copy()
@@ -414,6 +415,21 @@ def agg_by_obs_and_bin(fview, obs_group_vars=['site_name'], bin_width=10,
         fview.obs['row'] = fview.obs.index # necessary for getting right row
         new_obs['n_seqs'] = 1
     else:
+        # If there are multiple obs_group_vars, create a new column with a
+        # header that is the concatenation of the headers of specified columns
+        # and where the value of the row at the new column is the concatenation
+        # of the values of the specified columns
+        if len(obs_group_vars) > 1:
+            obs_group_var = '_'.join(obs_group_vars)
+            compound_values = [None] * len(fview.obs)
+            for i in range(len(fview.obs)):
+                row = fviews.obs[i]
+                values = []
+                for col in obs_group_vars:
+                    values.append(row[col])
+                compound_value = '_'.join(values)
+                compound_values[i] = compound_value
+            fview[obs_group_var] = compound_values
         for obs_group_var in obs_group_vars:
             if not obs_group_var in obs_to_keep:
                 obs_to_keep.append(obs_group_var)
