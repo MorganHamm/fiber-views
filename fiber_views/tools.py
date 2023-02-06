@@ -376,18 +376,18 @@ def bin_sparse_regions(fview, base_name = 'nuc', bin_width = 10, interval = 3):
     return(results)
 
 
-def agg_by_obs_and_bin(fview, obs_group_vars=['site_name'], bin_width=10,
+def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
                        obs_to_keep=['seqid', 'pos', 'strand', ''], fast=True):
     """
-    Aggregate fiber view data by a group variable in the `obs` dataframe and bin by `bin_width` basepairs.
+    Aggregate fiber view data by a group variable in the `obs` dataframe and bin by `bin_widht` basepairs.
 
     Parameters
     ----------
     fview : anndata.AnnData
         The fiber view object containing the data to be aggregated.
-    obs_group_vars : List[str], optional
+    obs_group_var : str, optional
         The name of the `obs` group variable to use for aggregation. The default value is 'site_name'.
-        If `obs_group_vars` is set to None, the fiber view will not be aggregated by rows and the row ordering will
+        If `obs_group_var` is set to None, the fiber view will not be aggregated by rows and the row ordering will
         be preserved.
     bin_width : int, optional
         The width of each bin, in base pairs. The default value is 10.
@@ -406,8 +406,7 @@ def agg_by_obs_and_bin(fview, obs_group_vars=['site_name'], bin_width=10,
     # obs_to_keep should be a list of column names, should not be read specific
     # if fast is True, mod matrices will be converted to dense for calculation
     t_start = time.time()
-    obs_group_var = None
-    if obs_group_vars is None:
+    if obs_group_var is None:
         # if None is passed to obs_group_var, process each row individually
         obs_group_var = 'row'
         new_obs = fview.obs.copy()
@@ -415,27 +414,11 @@ def agg_by_obs_and_bin(fview, obs_group_vars=['site_name'], bin_width=10,
         fview.obs['row'] = fview.obs.index # necessary for getting right row
         new_obs['n_seqs'] = 1
     else:
-        # If there are multiple obs_group_vars, create a new column with a
-        # header that is the concatenation of the headers of specified columns
-        # and where the value of the row at the new column is the concatenation
-        # of the values of the specified columns
-        if len(obs_group_vars) > 1:
-            obs_group_var = '_'.join(obs_group_vars)
-            compound_values = [None] * len(fview.obs)
-            for i in range(len(fview.obs)):
-                row = fview.obs[i]
-                values = []
-                for col in obs_group_vars:
-                    values.append(row[col])
-                compound_value = '_'.join(values)
-                compound_values[i] = compound_value
-            fview[obs_group_var] = compound_values
-        for obs_group_var in obs_group_vars:
-            if not obs_group_var in obs_to_keep:
-                obs_to_keep.append(obs_group_var)
+        if not obs_group_var in obs_to_keep:
+            obs_to_keep.append(obs_group_var)
         obs_to_keep = [col  for col in obs_to_keep if col in fview.obs.columns]
-        new_obs = fview.obs[obs_to_keep].groupby([obs_group_vars]).first()
-        new_obs['n_seqs'] = fview.obs.groupby([obs_group_vars]).count().iloc[:,1]
+        new_obs = fview.obs[obs_to_keep].groupby([obs_group_var]).first()
+        new_obs['n_seqs'] = fview.obs.groupby([obs_group_var]).count().iloc[:,1]
     # the value in var.pos is the pos at the start of each window.
     new_var = pd.DataFrame({"pos" : list(range(fview.var.pos[0],
                                                fview.var.pos[fview.shape[1]-1]+1,
