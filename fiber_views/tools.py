@@ -423,7 +423,7 @@ def agg_by_obs_and_bin(fview, obs_group_vars=['site_name'], bin_width=10,
             obs_group_var = '_'.join(obs_group_vars)
             compound_values = [None] * len(fview.obs)
             for i in range(len(fview.obs)):
-                row = fviews.obs[i]
+                row = fview.obs[i]
                 values = []
                 for col in obs_group_vars:
                     values.append(row[col])
