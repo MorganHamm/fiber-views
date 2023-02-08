@@ -39,10 +39,18 @@ all_positions = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=
 
 # Unique positions correspond with the individual loci (e.g. the ~900 loci for ONSEN LTR)
 pos_s = pd.unique(all_positions.obs.pos)
-te_family_view = all_positions[all_positions.obs.pos == pos_s[0]]
+# te_family_view = all_positions[all_positions.obs.pos == pos_s[0]]
 plot = fv.tools.simple_region_plot(te_family_view)
 fig = plot.get_figure()
 fig.savefig(f'{output_dir}/{family_name}{ending}.svg') # For saving in different formats: https://www.marsja.se/how-to-save-a-seaborn-plot-as-a-file-e-g-png-pdf-eps-tiff/
+
+# Dendritic tree of kmer similarity
+fv.tools.count_kmers(te_family_view, k=6)
+fv.tools.calc_kmer_dist(te_family_view, metric='cityblock')
+Z = linkage(distance.squareform(te_family_view.obsp['kmer_dist']))
+dend = dendrogram(Z)
+te_family_view = te_family_view[hierarchy.leaves_list(Z), :]
+te_family_view.obs['kmer_cluster'] = dend['leaves_color_list']
 
 # Collapse down by site (i.e. "seqid:pos (strand)")
 obs_group_var = 'site_name'
@@ -54,7 +62,7 @@ cluster_features = np.concatenate([binned_by_position_view.layers['m6a_count']],
 
 pca = PCA(n_components=None, whiten=False)
 pca.fit(cluster_features)
-transformed = pca.transform(clust_feats)
+transformed = pca.transform(cluster_features)
 te_family_view.obsm['PCA'] = transformed
 
 # plot of variance explained by each PC
