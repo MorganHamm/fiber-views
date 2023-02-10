@@ -44,15 +44,15 @@ all_positions = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=
 pos_s = pd.unique(all_positions.obs.pos)
 te_family_view = all_positions
 print(f'46: te_family_view.uns\n{te_family_view.uns}')
-print('Generating initial simple plot.')
-plot = fv.tools.simple_region_plot(te_family_view)
-fig = plot.get_figure()
-fig.savefig(f'{output_dir}/{family_name}{ending}.svg') # For saving in different formats: https://www.marsja.se/how-to-save-a-seaborn-plot-as-a-file-e-g-png-pdf-eps-tiff/
-fig.savefig(f'{output_dir}/{family_name}{ending}.png')
-plt.close(fig)
+# print('Generating initial simple plot.')
+# plot = fv.tools.simple_region_plot(te_family_view)
+# fig = plot.get_figure()
+# fig.savefig(f'{output_dir}/{family_name}{ending}.svg') # For saving in different formats: https://www.marsja.se/how-to-save-a-seaborn-plot-as-a-file-e-g-png-pdf-eps-tiff/
+# fig.savefig(f'{output_dir}/{family_name}{ending}.png')
+# plt.close(fig)
 
 
-### Collapse down by site (i.e. "seqid:pos (strand)")
+### Collapse down by site_name (i.e. "seqid:pos (strand)")
 obs_group_var = 'site_name'
 # Don't bin at first, just aggregate
 agged_view = fv.tools.agg_by_obs_and_bin(te_family_view, obs_group_var=obs_group_var, bin_width=1,
