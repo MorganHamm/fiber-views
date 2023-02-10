@@ -37,12 +37,12 @@ anno_df = pd.read_csv(f'/net/gs/vol1/home/joemin/te_extractions/{family_name}/{f
 anno_df.query('pos < 20000', inplace=True)
 
 all_positions = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=True)
-# print(all_positions.layers)
 # Layers with keys: seq, m6a, cpg, nuc_pos, nuc_len, nuc_score, msp_pos, msp_len, msp_score, cpg_sites
 
 ### Unique positions correspond with the individual loci (e.g. the ~900 loci for ONSEN LTR)
 pos_s = pd.unique(all_positions.obs.pos)
 te_family_view = all_positions
+print(f'45: te_family_view.uns\n{te_family_view.layers}')
 print(f'46: te_family_view.uns\n{te_family_view.uns}')
 # print('Generating initial simple plot.')
 # plot = fv.tools.simple_region_plot(te_family_view)
@@ -57,7 +57,8 @@ obs_group_var = 'site_name'
 # Don't bin at first, just aggregate
 agged_view = fv.tools.agg_by_obs_and_bin(te_family_view, obs_group_var=obs_group_var, bin_width=1,
                                           obs_to_keep=all_positions.obs.columns)
-print(f'59: agged_view.layers\n{agged_view.layers}')
+print(f'60: agged_view.layers\n{agged_view.layers}')
+print(f'61: agged_view.uns\n{agged_view.uns}')
 
 print('Generating binned plot.')
 plot = sns.heatmap(agged_view.layers['nuc_coverage'])
