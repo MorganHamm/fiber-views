@@ -391,7 +391,7 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
         be preserved.
     bin_width : int, optional
         The width of each bin, in base pairs. The default value is 10.
-        If `bin_width is 1, the data will not be binned.
+        If `bin_width` is 1, the data will not be binned and existing layers will be preserved.
     obs_to_keep : list of str, optional
         A list of observation metadata columns to keep in the aggregated data. The default value is ['seqid', 'pos', 'strand', ''].
     fast : bool, optional
@@ -429,7 +429,10 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
     new_adata.uns = fview.uns.copy()
     new_adata.uns['is_agg'] = True
     new_adata.uns['bin_width'] = bin_width
-    del(new_adata.uns['region_report_interval'])
+    if 'region_report_interval' in new_adata.uns:
+        del(new_adata.uns['region_report_interval'])
+    if bin_width == 1:
+        new_adata.layers = fview.layers.copy()
     # count occurence of each base in each bin
     print("bases_and_mods")
 
