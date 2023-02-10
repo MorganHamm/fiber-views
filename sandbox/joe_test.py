@@ -72,7 +72,7 @@ pca.fit(cluster_features)
 transformed = pca.transform(cluster_features)
 binned_view.obsm['PCA'] = transformed
 
-print('Generating scatter plot.')
+print('Generating PC scatter plot.')
 plot = sns.scatterplot(x=np.arange(pca.components_.shape[0]), y=pca.explained_variance_ratio_)
 fig = plot.get_figure()
 fig.savefig(f'{output_dir}/{family_name}{ending}_PC_scatter.svg')
@@ -85,6 +85,7 @@ binned_view.obs['PC3'] = binned_view.obsm['PCA'][:,2]
 
 
 ### k-means clustering
+print('Generating kmeans scatter plot.')
 kmeans = KMeans(n_clusters=8, random_state=None, n_init=20).fit(binned_view.obsm['PCA'][:,0:40])
 binned_view.obs['km_clust'] = kmeans.labels_
 plot = sns.scatterplot(data=binned_view.obs, x='PC1', y='PC2', hue='km_clust', palette="tab10")
@@ -95,15 +96,18 @@ plt.close(fig)
 
 
 ### re-order and plot
+print('Generating sorted cluster plot.')
 binned_view_sorted = binned_view[binned_view.obs.sort_values(by='km_clust').index]
-binned_view_sorted = fv_filt[binned_view.obs.sort_values(by='km_clust').index] # show the filtered view
-plot = fv.tools.simple_region_plot(binned_view_sorted)
+# binned_view_sorted = binned_view[binned_view.obs.sort_values(by='km_clust').index] # show the filtered view
+plot = sns.heatmap(binned_view_sorted.layers['nuc_coverage'])
 fig = plot.get_figure()
 fig.savefig(f'{output_dir}/{family_name}{ending}_sorted_by_cluster.svg')
 fig.savefig(f'{output_dir}/{family_name}{ending}_sorted_by_cluster.png')
+plt.close(fig)
 
 
 ### aggregate each cluster, and plot a heatmap of MSP coverage
+print('Generating sorted aggregated cluster plot.')
 binned_view_sorted = binned_view[binned_view.obs.sort_values(by='km_clust').index]
 binned_view_sorted.obs['clust'] = binned_view_sorted.obs['km_clust'].astype(str)
 clustered_aggregated_view = fv.tools.agg_by_obs_and_bin(binned_view_sorted, obs_group_var='clust', bin_width=10,
@@ -112,10 +116,13 @@ plot = sns.heatmap(clustered_aggregated_view.layers['msp_coverage'] / clustered_
 fig = plot.get_figure()
 fig.savefig(f'{output_dir}/{family_name}{ending}_sorted_by_cluster_and_aggregated.svg')
 fig.savefig(f'{output_dir}/{family_name}{ending}_sorted_by_cluster_and_aggregated.png')
+plt.close(fig)
 
 
 ### plot the component loadings of the first 10 PCs
+print('Generating 10 PCs plot.')
 plot = sns.heatmap(pca.components_[0:10, ], cmap="PiYG", center=0)
 fig = plot.get_figure()
 fig.savefig(f'{output_dir}/{family_name}{ending}_10_PCs.svg')
 fig.savefig(f'{output_dir}/{family_name}{ending}_10_PCs.png')
+plt.close(fig)
