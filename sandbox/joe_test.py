@@ -37,11 +37,12 @@ anno_df = pd.read_csv(f'/net/gs/vol1/home/joemin/te_extractions/{family_name}/{f
 anno_df.query('pos < 20000', inplace=True)
 
 all_positions = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=True)
+print(all_positions.layers)
+# Layers with keys: seq, m6a, cpg, nuc_pos, nuc_len, nuc_score, msp_pos, msp_len, msp_score, cpg_sites
 
 ### Unique positions correspond with the individual loci (e.g. the ~900 loci for ONSEN LTR)
 pos_s = pd.unique(all_positions.obs.pos)
 te_family_view = all_positions
-# te_family_view = all_positions[all_positions.obs.pos == pos_s[0]]
 print('Generating initial simple plot.')
 plot = fv.tools.simple_region_plot(te_family_view)
 fig = plot.get_figure()
@@ -69,8 +70,6 @@ cluster_features = binned_view.layers['msp_coverage']
 
 pca = PCA(n_components=None, whiten=False)
 pca.fit(cluster_features)
-transformed = pca.transform(cluster_features)
-binned_view.obsm['PCA'] = transformed
 
 print('Generating PC scatter plot.')
 plot = sns.scatterplot(x=np.arange(pca.components_.shape[0]), y=pca.explained_variance_ratio_)
@@ -79,13 +78,16 @@ fig.savefig(f'{output_dir}/{family_name}{ending}_PC_scatter.svg')
 fig.savefig(f'{output_dir}/{family_name}{ending}_PC_scatter.png')
 plt.close(fig)
 
+
+### k-means clustering
+print('Generating kmeans scatter plot.')
+transformed = pca.transform(cluster_features)
+binned_view.obsm['PCA'] = transformed
+binned_and_filtered_view = fv.tools.filter_regions(binned_view, base_name='msp', length_limits=80)
 binned_view.obs['PC1'] = binned_view.obsm['PCA'][:,0]
 binned_view.obs['PC2'] = binned_view.obsm['PCA'][:,1]
 binned_view.obs['PC3'] = binned_view.obsm['PCA'][:,2]
 
-
-### k-means clustering
-print('Generating kmeans scatter plot.')
 kmeans = KMeans(n_clusters=8, random_state=None, n_init=20).fit(binned_view.obsm['PCA'][:,0:40])
 binned_view.obs['km_clust'] = kmeans.labels_
 plot = sns.scatterplot(data=binned_view.obs, x='PC1', y='PC2', hue='km_clust', palette="tab10")
