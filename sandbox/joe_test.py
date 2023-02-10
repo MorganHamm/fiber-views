@@ -37,12 +37,13 @@ anno_df = pd.read_csv(f'/net/gs/vol1/home/joemin/te_extractions/{family_name}/{f
 anno_df.query('pos < 20000', inplace=True)
 
 all_positions = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=True)
-print(all_positions.layers)
+# print(all_positions.layers)
 # Layers with keys: seq, m6a, cpg, nuc_pos, nuc_len, nuc_score, msp_pos, msp_len, msp_score, cpg_sites
 
 ### Unique positions correspond with the individual loci (e.g. the ~900 loci for ONSEN LTR)
 pos_s = pd.unique(all_positions.obs.pos)
 te_family_view = all_positions
+print(f'46: te_family_view.uns\n{te_family_view.uns}')
 print('Generating initial simple plot.')
 plot = fv.tools.simple_region_plot(te_family_view)
 fig = plot.get_figure()
@@ -53,11 +54,13 @@ plt.close(fig)
 
 ### Collapse down by site (i.e. "seqid:pos (strand)")
 obs_group_var = 'site_name'
-binned_view = fv.tools.agg_by_obs_and_bin(te_family_view, obs_group_var=obs_group_var, bin_width=20,
+# Don't bin at first, just aggregate
+agged_view = fv.tools.agg_by_obs_and_bin(te_family_view, obs_group_var=obs_group_var, bin_width=1,
                                           obs_to_keep=all_positions.obs.columns)
+print(f'59: agged_view.layers\n{agged_view.layers}')
 
 print('Generating binned plot.')
-plot = sns.heatmap(binned_view.layers['nuc_coverage'])
+plot = sns.heatmap(agged_view.layers['nuc_coverage'])
 fig = plot.get_figure()
 fig.savefig(f'{output_dir}/{family_name}{ending}_binned.svg')
 fig.savefig(f'{output_dir}/{family_name}{ending}_binned.png')
@@ -65,32 +68,31 @@ plt.close(fig)
 
 
 ### PCA
-cluster_features = binned_view.layers['msp_coverage']
-# cluster_features = np.concatenate([binned_view.layers['m6a_count']], axis=1)
+cluster_features = agged_view.layers['msp_coverage']
+# cluster_features = np.concatenate([agged_view.layers['m6a_count']], axis=1)
 
 pca = PCA(n_components=None, whiten=False)
 pca.fit(cluster_features)
 
-print('Generating PC scatter plot.')
-plot = sns.scatterplot(x=np.arange(pca.components_.shape[0]), y=pca.explained_variance_ratio_)
-fig = plot.get_figure()
-fig.savefig(f'{output_dir}/{family_name}{ending}_PC_scatter.svg')
-fig.savefig(f'{output_dir}/{family_name}{ending}_PC_scatter.png')
-plt.close(fig)
+# print('Generating PC scatter plot.')
+# plot = sns.scatterplot(x=np.arange(pca.components_.shape[0]), y=pca.explained_variance_ratio_)
+# fig = plot.get_figure()
+# fig.savefig(f'{output_dir}/{family_name}{ending}_PC_scatter.svg')
+# fig.savefig(f'{output_dir}/{family_name}{ending}_PC_scatter.png')
+# plt.close(fig)
 
 
 ### k-means clustering
 print('Generating kmeans scatter plot.')
 transformed = pca.transform(cluster_features)
-binned_view.obsm['PCA'] = transformed
-binned_and_filtered_view = fv.tools.filter_regions(binned_view, base_name='msp', length_limits=80)
-binned_view.obs['PC1'] = binned_view.obsm['PCA'][:,0]
-binned_view.obs['PC2'] = binned_view.obsm['PCA'][:,1]
-binned_view.obs['PC3'] = binned_view.obsm['PCA'][:,2]
+agged_view.obsm['PCA'] = transformed
+binned_and_filtered_view = fv.tools.filter_regions(agged_view, base_name='msp', length_limits=80)
+agged_view.obs['PC1'] = agged_view.obsm['PCA'][:,0]
+agged_view.obs['PC2'] = agged_view.obsm['PCA'][:,1]
 
-kmeans = KMeans(n_clusters=8, random_state=None, n_init=20).fit(binned_view.obsm['PCA'][:,0:40])
-binned_view.obs['km_clust'] = kmeans.labels_
-plot = sns.scatterplot(data=binned_view.obs, x='PC1', y='PC2', hue='km_clust', palette="tab10")
+kmeans = KMeans(n_clusters=8, random_state=None, n_init=20).fit(agged_view.obsm['PCA'][:,0:40])
+agged_view.obs['km_clust'] = kmeans.labels_
+plot = sns.scatterplot(data=agged_view.obs, x='PC1', y='PC2', hue='km_clust', palette="tab10")
 fig = plot.get_figure()
 fig.savefig(f'{output_dir}/{family_name}{ending}_kmeans_scatter.svg')
 fig.savefig(f'{output_dir}/{family_name}{ending}_kmeans_scatter.png')
@@ -99,9 +101,8 @@ plt.close(fig)
 
 ### re-order and plot
 print('Generating sorted cluster plot.')
-binned_view_sorted = binned_view[binned_view.obs.sort_values(by='km_clust').index]
-# binned_view_sorted = binned_view[binned_view.obs.sort_values(by='km_clust').index] # show the filtered view
-plot = sns.heatmap(binned_view_sorted.layers['nuc_coverage'])
+agged_view_sorted = agged_view[agged_view.obs.sort_values(by='km_clust').index]
+plot = sns.heatmap(agged_view_sorted.layers['nuc_coverage'])
 fig = plot.get_figure()
 fig.savefig(f'{output_dir}/{family_name}{ending}_sorted_by_cluster.svg')
 fig.savefig(f'{output_dir}/{family_name}{ending}_sorted_by_cluster.png')
@@ -110,9 +111,9 @@ plt.close(fig)
 
 ### aggregate each cluster, and plot a heatmap of MSP coverage
 print('Generating sorted aggregated cluster plot.')
-binned_view_sorted = binned_view[binned_view.obs.sort_values(by='km_clust').index]
-binned_view_sorted.obs['clust'] = binned_view_sorted.obs['km_clust'].astype(str)
-clustered_aggregated_view = fv.tools.agg_by_obs_and_bin(binned_view_sorted, obs_group_var='clust', bin_width=10,
+agged_view_sorted = agged_view[agged_view.obs.sort_values(by='km_clust').index]
+agged_view_sorted.obs['clust'] = agged_view_sorted.obs['km_clust'].astype(str)
+clustered_aggregated_view = fv.tools.agg_by_obs_and_bin(agged_view_sorted, obs_group_var='clust', bin_width=10,
                             obs_to_keep=['seqid', 'pos', 'strand', 'gene_id', 'score'])
 plot = sns.heatmap(clustered_aggregated_view.layers['msp_coverage'] / clustered_aggregated_view.layers['read_coverage'])
 fig = plot.get_figure()
