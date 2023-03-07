@@ -214,8 +214,10 @@ def simple_region_plot(fview, mod='m6a'):
     # 2     :   msp 
     nucs = make_dense_regions(fview, base_name = 'nuc', report='score')
     msps = make_dense_regions(fview, base_name = 'msp', report='score')
-    sns.heatmap(nucs + msps *2 - fview.layers[mod] * 0.5 - (fview.layers['seq'] == b'-'), 
-                cmap=sns.color_palette("Paired", 7), vmin=-1, vmax=2)
+    hmap_data = pd.DataFrame(nucs + msps *2 - fview.layers[mod] * 0.5 - (fview.layers['seq'] == b'-'),
+                             columns=fview.var['pos'])
+    return sns.heatmap(hmap_data, cmap=sns.color_palette("Paired", 7), 
+                       vmin=-1, vmax=2)
     
 
 
@@ -298,7 +300,8 @@ def make_dense_regions(fview, base_name = 'nuc', report="score"):
     return(dense_mtx)
  
     
-def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf), 
+def filter_regions(fview, base_name = 'nuc', new_base_name = None, 
+                   length_limits = (-np.inf, np.inf), 
                    score_limits = (-np.inf, np.inf), inplace=False):
     """
     Filter base modifications in a fiber view by length and score limits.
@@ -310,6 +313,9 @@ def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf),
     base_name : str, optional
         The name of the type of regions to bin. This should be one of 'nuc' (nucleosomes), or 'msp' (methylation sensitive patches).
         The default value is 'nuc'.
+    new_base_name : str, optional
+        If not `None`, the new region base name to save the filtered regions to (region information at base_name will not be modified).
+        If new_base_name is None, the filtered regions will be saved to base_name.
     length_limits : tuple of float, optional
         The lower and upper limits for the length of the base modifications. Modifications with lengths outside of these
         limits will be filtered out. The default value is (-inf, inf), which includes all modifications.
@@ -331,15 +337,19 @@ def filter_regions(fview, base_name = 'nuc', length_limits = (-np.inf, np.inf),
         fview_out = fview
     else:
         fview_out = fview.copy()
+    if new_base_name == None:
+        new_base_name = base_name
+    elif new_base_name not in fview_out.uns['region_base_names']:
+        fview_out.uns['region_base_names'].append(new_base_name)
     region_df = make_region_df(fview, base_name=base_name)
     region_df = region_df[(region_df.length > length_limits[0]) &
                           (region_df.length < length_limits[1]) &
                           (region_df.score > score_limits[0]) &
                           (region_df.score < score_limits[1])]
     pos_array, len_array, score_array = utils.make_sparse_regions(region_df, fview.shape)
-    fview_out.layers["{}_pos".format(base_name)] = pos_array.tocsr()
-    fview_out.layers["{}_len".format(base_name)] = len_array.tocsr()
-    fview_out.layers["{}_score".format(base_name)] = score_array.tocsr()
+    fview_out.layers["{}_pos".format(new_base_name)] = pos_array.tocsr()
+    fview_out.layers["{}_len".format(new_base_name)] = len_array.tocsr()
+    fview_out.layers["{}_score".format(new_base_name)] = score_array.tocsr()
     if inplace:
         return(None)
     else:
