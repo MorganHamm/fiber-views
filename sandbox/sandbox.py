@@ -45,7 +45,7 @@ sdata = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=
                                 obs_to_keep=['seqid', 'pos', 'strand', 
                                              'gene_id', 'score'])
 
-fv.tools.simple_region_plot(fview)
+fv.tools.simple_region_plot(fview, mod='m6a')
 
 # -----------------------------------------------------------------------------
 # check that cpgs are landing on Cs...

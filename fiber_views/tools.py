@@ -212,12 +212,23 @@ def simple_region_plot(fview, mod='m6a'):
     # 1     :   nucleosome
     # 1.5   :   msp, m6A
     # 2     :   msp
+    # colors = ['#DBDBDB','#aaaaaa','#4377d0','#9dfff9','#139a43','#b2eb76']
+    # palette = sns.color_palette("Paired", 7)
+    colors = ['#cfcfcf', '#000000', '#9b9b9b','#4377d0','#9dfff9','#e31a1c', '#fdbf6f']
+    palette = sns.color_palette(colors, 7)
     nucs = make_dense_regions(fview, base_name = 'nuc', report='score')
     msps = make_dense_regions(fview, base_name = 'msp', report='score')
     hmap_data = pd.DataFrame(nucs + msps *2 - fview.layers[mod] * 0.5 - (fview.layers['seq'] == b'-'),
                              columns=fview.var['pos'])
-    return sns.heatmap(hmap_data, cmap=sns.color_palette("Paired", 7), 
-                       vmin=-1, vmax=2)
+    ax = sns.heatmap(hmap_data, cmap=palette, vmin=-1, vmax=2)
+    
+    cbar = ax.collections[0].colorbar
+    d=3/7 # dist between colors
+    cbar.set_ticks(np.arange(-1+d/2,2, d))
+    cbar.set_ticklabels(['outside\nof read', 'methylation\nno region', 
+                         'no region', 'methylation\nin nucleosome', 'nucleosome', 'methylation\nin MSP', 'MSP'])
+    
+    return ax
     
 
 
