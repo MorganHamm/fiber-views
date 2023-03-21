@@ -24,14 +24,16 @@ os.chdir(os.path.expanduser("~/git/fiber_views"))
 # basic reading from bam file and summarizing 
 
 
-bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
+# bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
+bamfile = pysam.AlignmentFile("examples/data/chr3_sample.aligned.fiberseq.bam", "rb")
 
-bed_data = fv.read_bed('local/TAIR10_genes.bed')
+# bed_data = fv.read_bed('local/TAIR10_genes.bed')
+bed_data = fv.read_bed('examples/data/TAIR10_genes.bed')
 # bed_data.query('not chrom in ["chrC", "chrM"]', inplace=True)
 
 
 anno_df = fv.bed_to_anno_df(bed_data)
-anno_df.query('seqid == "chr3" & pos < 200000', inplace=True) 
+anno_df.query('seqid == "chr3" & pos < 100000', inplace=True) 
 
 
 
