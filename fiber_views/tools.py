@@ -188,7 +188,7 @@ def plot_summary(sdata, bin_width=10):
 
     sns.lineplot(data=long_df, x='pos', y='value', hue='variable')
 
-def simple_region_plot(fview, mod='m6a'):
+def simple_region_plot(fview, mod='m6a', split_var=None):
     """
     Plot a heatmap of DNA methylation levels and DNA sequence features in a fiber view.
 
@@ -200,6 +200,8 @@ def simple_region_plot(fview, mod='m6a'):
         Fiber view object containing DNA methylation data in the 'm6a' and 'cpg' elements of the `layers` attribute, and DNA sequence data in the 'seq' element of the `layers` attribute.
     mod : str, optional
         DNA methylation state to plot. Should be set to 'm6a' (default) or 'cpg'.
+    split_var : str, optional
+        The name of a field in fview.obs. if not None, a white line will be drawn between any rows where this value changes. Usefull for splitting clusters or groups of fibers up visually.
 
     Returns
     -------
@@ -221,6 +223,13 @@ def simple_region_plot(fview, mod='m6a'):
     hmap_data = pd.DataFrame(nucs + msps *2 - fview.layers[mod] * 0.5 - (fview.layers['seq'] == b'-'),
                              columns=fview.var['pos'])
     ax = sns.heatmap(hmap_data, cmap=palette, vmin=-1, vmax=2)
+    if split_var != None:
+        h_lines = []
+        for i, group in enumerate(fview.obs[split_var]):
+            if group != fview.obs[split_var][i-1]:
+                h_lines.append(i)
+        ax.hlines(h_lines, xmin=0, xmax=hmap_data.shape[1], color="white")
+
     
     cbar = ax.collections[0].colorbar
     d=3/7 # dist between colors
