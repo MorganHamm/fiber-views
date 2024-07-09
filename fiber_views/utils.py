@@ -563,7 +563,7 @@ def read_bed(bed_file):
     bed_data = pd.read_csv(bed_file, sep="\t", header=None)
     BED_HEADER = ['chrom', 'start', 'end', 'name', 'score', 'strand', 'thick_start',
                   'thick_end', 'item_rgb', 'block_count', 'block_widths', 'block_starts']
-    bed_data.set_axis(BED_HEADER[0:bed_data.shape[1]], axis=1, inplace=True)
+    bed_data = bed_data.set_axis(BED_HEADER[0:bed_data.shape[1]], axis=1)
     return(bed_data)
 
 

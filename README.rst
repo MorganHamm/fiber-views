@@ -31,7 +31,8 @@ current install method:
     git clone https://github.com/MorganHamm/fiber_views.git
     cd fiber_views
     conda env create --file=envs/env.yml
-    conda activate fiber-views
+    conda activate fv-test
+    # manually instale fibertools from source here
     pip install -e .
 
 
