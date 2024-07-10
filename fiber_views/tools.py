@@ -218,8 +218,8 @@ def simple_region_plot(fview, mod='m6a', split_var=None):
     # palette = sns.color_palette("Paired", 7)
     colors = ['#cfcfcf', '#000000', '#9b9b9b','#4377d0','#9dfff9','#e31a1c', '#fdbf6f']
     palette = sns.color_palette(colors, 7)
-    nucs = make_dense_regions(fview, base_name = 'nuc', report='score')
-    msps = make_dense_regions(fview, base_name = 'msp', report='score')
+    nucs = make_dense_regions(fview, base_name = 'nuc', report='ones')
+    msps = make_dense_regions(fview, base_name = 'msp', report='ones')
     hmap_data = pd.DataFrame(nucs + msps *2 - fview.layers[mod] * 0.5 - (fview.layers['seq'] == b'-'),
                              columns=fview.var['pos'])
     ax = sns.heatmap(hmap_data, cmap=palette, vmin=-1, vmax=2)
@@ -290,7 +290,7 @@ def make_region_df(fview, base_name = 'nuc', zero_pos='left'):
         })
     return(region_df.drop_duplicates(ignore_index=True))
 
-def make_dense_regions(fview, base_name = 'nuc', report="score"):
+def make_dense_regions(fview, base_name = 'nuc', report="ones"):
     """
     Create a dense matrix containing a representation of region infromation in a fiber view.
 
@@ -302,7 +302,7 @@ def make_dense_regions(fview, base_name = 'nuc', report="score"):
         The name of the type of regions to bin. This should be one of 'nuc' (nucleosomes), or 'msp' (methylation sensitive patches).
         The default value is 'nuc'.
     report : str, optional
-        The data to include in the dense matrix. This should be one of 'score' or 'length'. The default value is 'score'.
+        The data to include in the dense matrix. This should be one of 'ones', 'score' or 'length'. The default value is 'score'.
 
     Returns
     -------
@@ -311,12 +311,19 @@ def make_dense_regions(fview, base_name = 'nuc', report="score"):
         Each position in the matrix where a region is not present is set to 0, positions where ar region is present
         may be set to either the length or score value of the region occupying that position.
     """
+    if report == 'ones':
+        dtype = int
+    else:
+        dtype = region_df[report].dtype
     region_df = make_region_df(fview, base_name=base_name)
-    dense_mtx = np.zeros(fview.shape, dtype=region_df[report].dtype)
+    dense_mtx = np.zeros(fview.shape, dtype=dtype)
     for i, region in region_df.iterrows():
         start = max(region.start, 0)
         end = min(max(region.start + region.length, 0), dense_mtx.shape[1])
-        dense_mtx[region.row, start:end] = region[report]
+        if report == 'ones':
+            dense_mtx[region.row, start:end] = 1
+        else:
+            dense_mtx[region.row, start:end] = region[report]
     return(dense_mtx)
 
 def filter_regions(fview, base_name = 'nuc', new_base_name = None, 
@@ -406,7 +413,8 @@ def bin_sparse_regions(fview, base_name = 'nuc', bin_width = 10, interval = 3):
 
 
 def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
-                       obs_to_keep=['seqid', 'pos', 'strand', ''], fast=True):
+                       obs_to_keep=['seqid', 'pos', 'strand', ''], fast=True,
+                       region_weights = 'ones'):
     """
     Aggregate fiber view data by a group variable in the `obs` dataframe and bin by `bin_widht` basepairs.
 
@@ -426,6 +434,8 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
     fast : bool, optional
         If True, the modification matrices will be converted to dense matrices for faster calculations. The default value is True.
         This may use more memory for large fiber view objects.
+    region_weights : str, optional
+        how to weight regions when aggregating must be one of 'ones', 'length' or 'score'
 
     Returns
     -------
@@ -506,6 +516,7 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
         layer_name = "{}_coverage".format(region_type)
         new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=float)
         region_df = make_region_df(fview, base_name=region_type, zero_pos='left')
+        region_df['ones'] = 1
         for m, region in region_df.iterrows():
             group = fview.obs[obs_group_var][region.row]
             i = new_adata.obs.index.get_loc(str(group))
@@ -516,18 +527,18 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
             if reg_start_bin == reg_end_bin:
                 # if the region is fully contained in one bin
                 new_adata.layers[layer_name][i, reg_start_bin] += \
-                    region.score * (reg_bound_end - reg_bound_start)
+                    region[region_weights] * (reg_bound_end - reg_bound_start)
                 continue
             # bins fully covered by the region
             new_adata.layers[layer_name][i, reg_start_bin + 1:reg_end_bin] += \
-                region.score * bin_width
+                region[region_weights] * bin_width
             # partial bin at beginning of region
             new_adata.layers[layer_name][i, reg_start_bin] += \
-                (bin_width - (reg_bound_start % bin_width)) * region.score
+                (bin_width - (reg_bound_start % bin_width)) * region[region_weights]
             # partial bin at end of region
             if reg_end_bin != new_adata.shape[1]:
                 new_adata.layers[layer_name][i, reg_end_bin] += \
-                    (reg_bound_end % bin_width) * region.score
+                    (reg_bound_end % bin_width) * region[region_weights]
     t_end = time.time()
     print(t_end - t_start)
     return(new_adata)

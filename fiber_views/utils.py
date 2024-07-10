@@ -526,7 +526,7 @@ def get_strand_correct_regions(read, tags=('ns', 'nl'), centered=False):
     raw_lengths = np.array(read.alignment.get_tag(tags[1]), dtype='int32')
     # raw_ends = raw_starts + raw_lengths
     if len(tags) == 3:
-        raw_scores = np.array(read.alignment.get_tag(tags[2]), dtype='int8')
+        raw_scores = np.array(read.alignment.get_tag(tags[2]), dtype='int32')
     else:
         raw_scores = list(repeat(1, len(raw_starts)))
     if read.alignment.is_reverse:

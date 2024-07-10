@@ -27,7 +27,7 @@ class FiberView(ad.AnnData):
     def __init__(self, alignment_file, df, window=(-1000, 1000), 
                  min_mod_score=220, mark_cpgs=True, fully_span=True, 
                  region_interval=30, filter_args={'dist':3000, 'cutoff':2},
-                 tags=['np', 'ec', 'rq']):
+                 tags=['np', 'ec', 'rq'], fire=False):
         row_anno_df_list = []
         seq_mtx_list = []
         m6a_mtx_list = []
@@ -64,9 +64,15 @@ class FiberView(ad.AnnData):
             nuc_len_mtx_list.append(reg_len_mtx)
             nuc_score_mtx_list.append(reg_score_mtx)
             
-            reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
-                reads.build_sparse_region_array(window, tags=('as', 'al'), 
-                                                interval=region_interval)          
+            if fire:
+                reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
+                    reads.build_sparse_region_array(window, tags=('as', 'al', 'aq'), 
+                                                    interval=region_interval)
+            else:
+                reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
+                    reads.build_sparse_region_array(window, tags=('as', 'al'), 
+                                                    interval=region_interval)
+
             msp_pos_mtx_list.append(reg_pos_mtx)
             msp_len_mtx_list.append(reg_len_mtx)
             msp_score_mtx_list.append(reg_score_mtx)
