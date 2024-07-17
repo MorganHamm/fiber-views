@@ -33,7 +33,7 @@ bed_data = fv.read_bed('examples/data/TAIR10_genes.bed')
 
 
 anno_df = fv.bed_to_anno_df(bed_data)
-anno_df.query('seqid == "chr3" & pos < 100000', inplace=True) 
+anno_df = anno_df.query('seqid == "chr3" & pos < 100000') 
 
 
 
@@ -47,7 +47,7 @@ sdata = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=
                                 obs_to_keep=['seqid', 'pos', 'strand', 
                                              'gene_id', 'score'])
 
-fv.tools.simple_region_plot(fview, mod='m6a')
+fv.tools.simple_region_plot(fview, mod='m6a', split_var='site_name')
 
 # -----------------------------------------------------------------------------
 # check that cpgs are landing on Cs...
