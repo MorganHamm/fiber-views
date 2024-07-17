@@ -24,8 +24,8 @@ os.chdir(os.path.expanduser("~/git/fiber_views"))
 # basic reading from bam file and summarizing 
 
 
-# bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
-bamfile = pysam.AlignmentFile("examples/data/chr3_sample.aligned.fiberseq.bam", "rb")
+bamfile = pysam.AlignmentFile("local/aligned.fiberseq.chr3_trunc.bam", "rb")
+# bamfile = pysam.AlignmentFile("examples/data/chr3_sample.aligned.fiberseq.bam", "rb")
 
 # bed_data = fv.read_bed('local/TAIR10_genes.bed')
 bed_data = fv.read_bed('examples/data/TAIR10_genes.bed')
@@ -234,4 +234,24 @@ fv_agg2 = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='read_name', bin_widt
                             obs_to_keep=['seqid', 'pos', 'strand', 'gene_id', 'score'],
                             fast=True)
 
+
+# -----------------------------------------------------------------------------
+# testing max_reads
+
+import time
+
+
+t_start = time.time()
+fview = fv.FiberView(bamfile, anno_df.iloc[0:5], fully_span=False)
+t_end = time.time()
+
+print("300_limit: {}".format(t_end - t_start))
+
+
+
+t_start = time.time()
+fview = fv.FiberView(bamfile, anno_df.iloc[0:5], fully_span=False, max_reads=50)
+t_end = time.time()
+
+print("50_limit: {}".format(t_end - t_start))
 

@@ -52,7 +52,7 @@ class ReadList(list):
         self.strand = strand
         self.extend(normal_list)
 
-    def get_reads(self, alignment_file, ref_pos):
+    def get_reads(self, alignment_file, ref_pos, max_reads):
         """
         Retrieve reads from a BAM file for a given reference position.
         
@@ -64,6 +64,9 @@ class ReadList(list):
             A tuple containing the reference name, position, and strand of the
             genomic query position. The tuple should be of the form
             (reference_name, position, strand).
+        max_reads : int 
+            the max number of reads to load from the bam file, usefull to speed
+            up processing when coverage is deep.
             
         Returns
         -------
@@ -79,8 +82,11 @@ class ReadList(list):
         reads = []
         for pileup_column in pileup_iter:
             if pileup_column.pos == ref_pos[1]:
-                reads = [read for read in pileup_column.pileups
-                         if not read.query_position is None]
+                for read in pileup_column.pileups:
+                    if not read.query_position is None:
+                        reads.append(read)
+                    if len(reads) >= max_reads:
+                        break
                 break
             elif pileup_column.pos > ref_pos[1]:
                 break
@@ -563,7 +569,7 @@ def read_bed(bed_file):
     bed_data = pd.read_csv(bed_file, sep="\t", header=None)
     BED_HEADER = ['chrom', 'start', 'end', 'name', 'score', 'strand', 'thick_start',
                   'thick_end', 'item_rgb', 'block_count', 'block_widths', 'block_starts']
-    bed_data.set_axis(BED_HEADER[0:bed_data.shape[1]], axis=1, inplace=True)
+    bed_data = bed_data.set_axis(BED_HEADER[0:bed_data.shape[1]], axis=1)
     return(bed_data)
 
 
