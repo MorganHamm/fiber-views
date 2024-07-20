@@ -79,7 +79,7 @@ class FiberView(ad.AnnData):
             msp_score_mtx_list.append(reg_score_mtx)
             
         super().__init__(
-            obs=pd.concat(row_anno_df_list),
+            obs=pd.concat(row_anno_df_list, ignore_index=True),
             var=pd.DataFrame({"pos" : np.arange(window[0], window[1])})
             )
         self.X = csr_matrix(self.shape) # empty matrix, needed for AnnData.to_memory()
