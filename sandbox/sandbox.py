@@ -242,16 +242,16 @@ import time
 
 
 t_start = time.time()
-fview = fv.FiberView(bamfile, anno_df.iloc[0:5], fully_span=False)
+fview = fv.FiberView(bamfile, anno_df, fully_span=False)
 t_end = time.time()
 
 print("300_limit: {}".format(t_end - t_start))
-
+# 300_limit: 45.291322231292725
 
 
 t_start = time.time()
-fview = fv.FiberView(bamfile, anno_df.iloc[0:5], fully_span=False, max_reads=50)
+fview = fv.FiberView(bamfile, anno_df, fully_span=False, max_reads=100)
 t_end = time.time()
 
-print("50_limit: {}".format(t_end - t_start))
-
+print("100_limit: {}".format(t_end - t_start))
+# 100_limit: 24.672104597091675
