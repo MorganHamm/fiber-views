@@ -33,7 +33,7 @@ bed_data = fv.read_bed('examples/data/TAIR10_genes.bed')
 
 
 anno_df = fv.bed_to_anno_df(bed_data)
-anno_df.query('seqid == "chr3" & pos < 100000', inplace=True) 
+anno_df = anno_df.query('seqid == "chr3" & pos < 100000') 
 
 
 
