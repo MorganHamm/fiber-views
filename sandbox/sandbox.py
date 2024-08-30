@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 import os
+import time
 import seaborn as sns
 import matplotlib.pyplot as plt
 import fiber_views as fv
@@ -35,10 +36,10 @@ bed_data = fv.read_bed('examples/data/TAIR10_genes.bed')
 anno_df = fv.bed_to_anno_df(bed_data)
 anno_df = anno_df.query('seqid == "chr3" & pos < 100000') 
 
+anno_df = anno_df.sample(5)
 
 
-
-fview = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=False)
+fview = fv.FiberView(bamfile, anno_df, window=(-2000, 4000), fully_span=False)
 
 fview = fv.FiberView(bamfile, anno_df, window=(-2000, 2000), fully_span=True)
 
@@ -48,6 +49,33 @@ sdata = fv.tools.agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=
                                              'gene_id', 'score'])
 
 fv.tools.simple_region_plot(fview, mod='m6a', split_var='site_name')
+
+
+# -----------------------------------------------------------------------------
+# plotting
+
+wd = 1
+
+ax = fv.plot.make_plot_ax(fview)
+
+# fv.plot.draw_fiber_lines(fview, ax)
+fv.plot.draw_fiber_bars(fview, ax, width=wd)
+fv.plot.draw_regions(fview, ax, color="orange", width=wd)
+fv.plot.draw_split_lines(fview, ax, split_var="site_name")
+
+tstart = time.time()
+fv.plot.draw_mods_offset(fview, ax, mod='cpg_sites', color="blue", width=wd)
+fv.plot.draw_mods_offset(fview, ax, mod='cpg', color="red", width=wd)
+tend = time.time()
+print(tend - tstart)
+
+
+tstart = time.time()
+fv.plot.draw_mods(fview, ax, mod='cpg_sites', color="blue", width=wd)
+fv.plot.draw_mods(fview, ax, mod='cpg', color="red", width=wd)
+tend = time.time()
+print(tend - tstart)
+
 
 # -----------------------------------------------------------------------------
 # check that cpgs are landing on Cs...
