@@ -49,7 +49,7 @@ class ReadList(list):
 
     def __init__(self, normal_list=[], strand="+"):
         super().__init__()
-        self.strand = strand
+        self.strand = strand # strand of view relative to ref genome
         self.extend(normal_list)
 
     def get_reads(self, alignment_file, ref_pos, max_reads):
@@ -120,7 +120,7 @@ class ReadList(list):
         window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
-        if strand == "-":
+        if strand == "-": # strand of view relative to ref genome
             window = (-window[1], -window[0])
         list_out = [read for read in self if read.query_position + window[0] >= 0 and
                     read.query_position + window[1] <= read.alignment.query_length]
@@ -197,7 +197,7 @@ class ReadList(list):
         window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
-        if strand == "-":
+        if strand == "-": # strand of view relative to ref genome
             window = (-window[1], -window[0])            
         char_array = np.empty((len(self), window_len), dtype="S1")
         for i, read in enumerate(self):
@@ -253,9 +253,59 @@ class ReadList(list):
                                            score_cutoff=score_cutoff)
             if mods is None:
                 continue
-            if strand == "-":
+            if strand == "-": # strand of view relative to ref genome
                 # mods = (window_len-1) - mods - 1 * (mod_type == CPG_MODS)
                 mods = -mods - 1 - 1 * (mod_type == CPG_MODS)
+            mods = mods - window[0]                
+            mods = [mod for mod in mods if mod >= 0 and mod <= window_len-1]
+            for mod in mods:
+                I.append(i)
+                J.append(mod)
+        V = np.ones((len(J)), dtype=bool)
+        mod_mtx = coo_matrix((V, (I, J)), shape=(len(self), window_len))
+        if sparse == False:
+            mod_mtx = mod_mtx.toarray()
+        return(mod_mtx)
+    
+    def build_mod_array_from_def(self, window, mod_def, strand=None, sparse=True):
+        """
+        Create a base modification matrix for the reads in the `ReadList` object.
+        
+        Parameters
+        ----------
+        window : tuple
+            A tuple of integers representing the window of +/- window_offset. The
+            tuple should be of the form (window_start, window_end).
+        mod_type : list, optional
+            A list of tuples representing the base modification type to consider.
+            The default is M6A_MODS.
+        strand : str, optional
+            The strand of the genomic query position. If not provided, the strand
+            information of the `ReadList` object is used. The default is None.
+        sparse : bool, optional
+            If True, the base odification matrix is returned in sparse format. If 
+            False, the matrix is returned in dense format. The default is True.
+        score_cutoff : int, optional
+            The minimum score required for a base modification to be considered. The
+            default is 200.
+            
+        Returns
+        -------
+        mod_mtx : numpy array or scipy sparse matrix
+            A base modification matrix for the reads in the `ReadList` object.
+        """
+        # TODO update readme for mod_def
+        window_len = window[1] - window[0]
+        if strand is None:
+            strand = self.strand
+        I = []
+        J = []
+        for i, read in enumerate(self):
+            mods = get_strand_correct_mods_from_def(read, mod_def, centered=True)
+            if mods is None:
+                continue
+            if strand == "-": # strand of view relative to ref genome
+                mods = -mods - 1 - 1 * mod_def['rev_offset']
             mods = mods - window[0]                
             mods = [mod for mod in mods if mod >= 0 and mod <= window_len-1]
             for mod in mods:
@@ -300,7 +350,7 @@ class ReadList(list):
         for i, read in enumerate(self):
             starts, lengths, scores = get_strand_correct_regions(
                 read, tags=tags, centered=True)
-            if strand == "-":
+            if strand == "-": # strand of view relative to ref genome
                 starts = np.flip(0 - np.array(starts) - np.array(lengths))
                 lengths = np.flip(lengths)
                 scores = np.flip(scores)
@@ -317,6 +367,8 @@ class ReadList(list):
         return(make_sparse_regions(region_df, 
                                    shape=(len(self), window_len), 
                                    interval=interval))
+      
+    
 
     def build_anno_df(self, anno_series, tags=['np', 'ec', 'rq']):
         """
@@ -334,7 +386,9 @@ class ReadList(list):
         df : pandas DataFrame
             A data frame with annotation data for the reads in the `ReadList` object.
         """
-        row_data_dict = anno_series.to_dict()
+
+        # row_data_dict = anno_series.to_dict()
+        row_data_dict = dict(anno_series)
         row_data_dict['read_name'] = [
             read.alignment.query_name for read in self]
         row_data_dict['read_length'] = [
@@ -496,6 +550,49 @@ def get_strand_correct_mods(read, mod_type=M6A_MODS, centered=False, score_cutof
     return(mods)
 
 
+def get_strand_correct_mods_from_def(read, mod_def, centered=False):
+    """
+    Retrieve modified bases in a read and correct their positions to match the forward genomic strand.
+    
+    Parameters
+    ----------
+    read : pysam.libcalignedsegment.AlignedSegment
+        A read containing modified bases.
+    mod_type : list, optional
+        A list of modified bases to consider, in the form (base, index, code).
+        The default is M6A_MODS.
+    centered : bool, optional
+        Whether to center the positions around the query position of the read.
+        The default is False.
+    score_cutoff : int, optional
+        The minimum score required for a modified base to be included.
+        The default is 200.
+        
+    Returns
+    -------
+    mods : numpy.ndarray
+        An array of positions of modified bases, corrected for strand.
+        
+    Example
+    -------
+    mods = get_strand_correct_mods(read)
+    """
+    # TODO update readme for mod_def
+    # get modification positions and correct them to match the forward genomic strand
+    raw_mods = get_mod_pos_from_rec(
+        read.alignment, mods=mod_def['mod_code'], score_cutoff=mod_def['threshold'])
+    if raw_mods is None:
+        return(None)
+    if read.alignment.is_reverse:
+        mods = read.alignment.query_length - raw_mods - 1 - 1 * mod_def['rev_offset']
+        mods = np.flip(mods)
+    else:
+        mods = raw_mods
+    if centered:
+        mods = mods - read.query_position
+    return(mods)
+
+
 def get_strand_correct_regions(read, tags=('ns', 'nl'), centered=False):
     """
     Retrieve start positions, lengths, and scores of regions in a read and correct them to match the forward genomic strand.
@@ -530,7 +627,6 @@ def get_strand_correct_regions(read, tags=('ns', 'nl'), centered=False):
             return(([], [], []))
     raw_starts = np.array(read.alignment.get_tag(tags[0]), dtype='int32')
     raw_lengths = np.array(read.alignment.get_tag(tags[1]), dtype='int32')
-    # raw_ends = raw_starts + raw_lengths
     if len(tags) == 3:
         raw_scores = np.array(read.alignment.get_tag(tags[2]), dtype='int32')
     else:
@@ -538,8 +634,6 @@ def get_strand_correct_regions(read, tags=('ns', 'nl'), centered=False):
     if read.alignment.is_reverse:
         starts = np.flip(read.alignment.query_length -
                          raw_starts - raw_lengths)
-        # starts = np.flip(read.alignment.query_length -
-        #                  raw_starts - raw_lengths)
         lengths = np.flip(raw_lengths)
         scores = np.flip(raw_scores)
     else:
@@ -652,7 +746,7 @@ def make_sparse_regions(region_df, shape, bin_width = 1, interval = 30):
         J_vals = [start_bin] + list(
             np.arange(start_bin + (interval - (start_bin % interval)),
                       end_bin - 1,
-                      interval)
+                      interval) # + [end_bin] # TODO check if adding this will add RR at end of region
         )
         # if the reporting positon is already taken, slide over until it's not
         J_new = []
