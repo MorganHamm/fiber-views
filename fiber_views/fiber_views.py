@@ -25,6 +25,7 @@ D_TYPE = np.int64
 # =============================================================================
 
 class FiberView(ad.AnnData):
+    # OLD constructor, do not use for new stuff
     def __init__(self, alignment_file, df, window=(-1000, 1000), 
                  min_mod_score=220, mark_cpgs=True, fully_span=True, 
                  region_interval=30, filter_args={'dist':3000, 'cutoff':2},
@@ -93,8 +94,6 @@ class FiberView(ad.AnnData):
         self.layers['msp_pos'] = vstack(msp_pos_mtx_list).tocsr()
         self.layers['msp_len'] = vstack(msp_len_mtx_list).tocsr()
         self.layers['msp_score'] = vstack(msp_score_mtx_list).tocsr()
-        # self.obs['site_name'] = ["{}:{}({})".format(row.seqid, row.pos, row.strand) 
-        #                           for i, row in self.obs.iterrows()]
         # add unstructured data
         self.uns['region_report_interval'] = region_interval
         self.uns['is_agg'] = False
@@ -122,24 +121,189 @@ class FiberView(ad.AnnData):
                                           description=self.obs.index[i]) )
         return(seq_records)
 
+# deffinitions for base mods --------------------------------------------------
+
+# PacBio Fiber-seq
+PB_FS_mod_defs = [
+    {'name' : 'm6a', 'mod_code' : [("A", 0, "a"), ("T", 1, "a")], 'threshold' : 125, 'rev_offset' : 0},
+    {'name' : 'cpg', 'mod_code' : [("C", 0, "m")], 'threshold' : 125, 'rev_offset' : 1}
+    ]
+
+# ONT Fiber-seq
+ONT_FS_mod_defs = [
+    {'name' : 'm6A', 'mod_code' : [("A", 0, "a"), ("T", 1, "a")], 'threshold' : 220, 'rev_offset' : 0},
+    {'name' : '5mCpG', 'mod_code' : [("C", 0, "m")], 'threshold' : 220, 'rev_offset' : 1},
+    {'name' : '5hmC', 'mod_code' : [("C", 0, "h"), ("G", 1, "h")], 'threshold' : 220, 'rev_offset' : 0}
+    ]
+
+# deffinitions for regions ----------------------------------------------------
+
+# BAM with nucleosomes called
+NUC_region_defs = [
+    {'name' : 'nuc', 'tags' : ('ns', 'nl')},
+    {'name' : 'msp', 'tags' : ('as', 'al')}
+    ]
+
+# BAM with MSPs with FIRE scores
+FIRE_region_defs = [
+    {'name' : 'nuc', 'tags' : ('ns', 'nl')},
+    {'name' : 'msp', 'tags' : ('as', 'al', 'aq')}
+    ]
+
+# No regions called
+NONE_regions_def = []
+
+# -----------------------------------------------------------------------------
 
 
-def ad2fv(ad_object):
-    # converts an AnnData object to FiberView, in place and returns the object.
-    assert type(ad_object) == ad.AnnData, \
-           "expected object of type AnnData, got {}".format(type(ad_object)) 
-    # add checks for expected fields/layers here
-    ad_object.__class__ = FiberView
-    return(ad_object)
+def build_fview(alignment_file, sites_df, window=(-1000, 1000), fully_span=True, 
+             region_interval=30, filter_args={'dist':3000, 'cutoff':2},
+             tags=['np', 'ec', 'rq'], fire=False, max_reads=300):
+    
+    row_anno_df_list = []
+    seq_mtx_list = []
+    m6a_mtx_list = []
+    cpg_mtx_list = []
+    nuc_pos_mtx_list = []
+    nuc_len_mtx_list = []
+    nuc_score_mtx_list = []
+    msp_pos_mtx_list = []
+    msp_len_mtx_list = []
+    msp_score_mtx_list = []
+    for i, row in sites_df.iterrows():
+        print(i)
+        reads = utils.ReadList().get_reads(alignment_file, 
+                                     ref_pos=(row.seqid, row.pos, row.strand),
+                                     max_reads=max_reads)
+        if fully_span:
+            reads.filter_by_window(window, inplace=True)
+        if filter_args is not None:
+            reads.filter_by_end_meth(dist=filter_args['dist'], cutoff=filter_args['cutoff'], inplace=True)
+        if len(reads) == 0:
+            continue
+        row_anno_df_list.append(reads.build_anno_df(row, tags=tags))
+        seq_mtx_list.append(reads.build_seq_array(window))
+        m6a_mtx_list.append(reads.build_mod_array_from_def(window,
+                                                  mod_def=PB_FS_mod_defs[0], sparse=True))
+        cpg_mtx_list.append(reads.build_mod_array_from_def(window,
+                                                  mod_def=PB_FS_mod_defs[1], sparse=True))
+        
+        reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
+            reads.build_sparse_region_array(window, tags=('ns', 'nl'), 
+                                            interval=region_interval)
+        nuc_pos_mtx_list.append(reg_pos_mtx)
+        nuc_len_mtx_list.append(reg_len_mtx)
+        nuc_score_mtx_list.append(reg_score_mtx)
+        
+        if fire:
+            reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
+                reads.build_sparse_region_array(window, tags=('as', 'al', 'aq'), 
+                                                interval=region_interval)
+        else:
+            reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
+                reads.build_sparse_region_array(window, tags=('as', 'al'), 
+                                                interval=region_interval)
 
-def read_h5ad(filename, backed=None, as_sparse=(), 
-              as_sparse_fmt=csr_matrix, 
-              chunk_size=6000):
-    # wrapper around anndata.read_h5ad to return a FiberView object
-    adata = ad.read_h5ad(filename=filename,
-                         backed=backed,
-                         as_sparse=as_sparse,
-                         as_sparse_fmt = as_sparse_fmt,
-                         chunk_size=chunk_size)
-    return(ad2fv(adata))
+        msp_pos_mtx_list.append(reg_pos_mtx)
+        msp_len_mtx_list.append(reg_len_mtx)
+        msp_score_mtx_list.append(reg_score_mtx)
+        
+    fview = ad.AnnData(
+        obs=pd.concat(row_anno_df_list),
+        var=pd.DataFrame({"pos" : np.arange(window[0], window[1])})
+        )
+    fview.X = csr_matrix(fview.shape) # empty matrix, needed for AnnData.to_memory()
+    fview.layers['seq'] = np.vstack(seq_mtx_list)
+    fview.layers['m6a'] = vstack(m6a_mtx_list).tocsr()
+    fview.layers['cpg'] = vstack(cpg_mtx_list).tocsr()
+    fview.layers['nuc_pos'] = vstack(nuc_pos_mtx_list).tocsr()
+    fview.layers['nuc_len'] = vstack(nuc_len_mtx_list).tocsr()
+    fview.layers['nuc_score'] = vstack(nuc_score_mtx_list).tocsr()
+    fview.layers['msp_pos'] = vstack(msp_pos_mtx_list).tocsr()
+    fview.layers['msp_len'] = vstack(msp_len_mtx_list).tocsr()
+    fview.layers['msp_score'] = vstack(msp_score_mtx_list).tocsr()
+    # add unstructured data
+    fview.uns['region_report_interval'] = region_interval
+    fview.uns['is_agg'] = False
+    fview.uns['region_base_names'] = ['nuc', 'msp']
+    fview.uns['mods'] = ['m6a', 'cpg']
+    fview.uns['bin_width'] = 1
+    
+    return(fview)
+
+
+def build_single_fview(bam_file, site_info, mod_defs, region_defs, window=(-1000, 1000), 
+            fully_span=True, region_interval=30, filter_args={'dist':3000, 'cutoff':2},
+            tags=['np', 'ec', 'rq'], max_reads=300):
+    # site_info can be dict or pd.Series with keys 'seqid', 'pos', 'strand'
+    
+    bamfile = pysam.AlignmentFile(bam_file, "rb")
+    
+    reads = utils.ReadList().get_reads(bamfile, 
+                                 ref_pos=(site_info['seqid'], site_info['pos'], site_info['strand']),
+                                 max_reads=max_reads)
+    if fully_span:
+        reads.filter_by_window(window, inplace=True)
+    if filter_args is not None:
+        reads.filter_by_end_meth(dist=filter_args['dist'], cutoff=filter_args['cutoff'], inplace=True)
+    if len(reads) == 0:
+        return(None)
+    
+    obs = reads.build_anno_df(site_info, tags=tags)
+    
+    # initialize anndata
+    fview = ad.AnnData(
+        obs=obs, var=pd.DataFrame({"pos" : np.arange(window[0], window[1])}))
+    
+    # seq layer
+    fview.layers['seq'] = reads.build_seq_array(window)
+    
+    # mod layers
+    fview.uns['mods'] = []
+    for mod_def in mod_defs:
+        fview.layers[mod_def['name']] = reads.build_mod_array_from_def(window, 
+                                                    mod_def=mod_def, sparse=True)
+        fview.uns['mods'].append(mod_def['name'])
+        
+    # region layers
+    fview.uns['region_base_names'] = []
+    for region_def in region_defs:
+            reg_pos_mtx, reg_len_mtx, reg_score_mtx = \
+                reads.build_sparse_region_array(window, tags=region_def['tags'], 
+                                                interval=region_interval)
+            base_name = str(region_def['name'])
+            fview.layers[base_name + '_pos'] = reg_pos_mtx.tocsr()
+            fview.layers[base_name + '_len'] = reg_len_mtx.tocsr()
+            fview.layers[base_name + '_score'] = reg_score_mtx.tocsr()
+            fview.uns['region_base_names'].append(region_def['name'])
+    
+    
+    # UNS
+    fview.uns['region_report_interval'] = region_interval
+    fview.uns['mod_defs'] = mod_defs
+    fview.uns['region_defs'] = region_defs
+    
+    fview.X = csr_matrix(fview.shape) # empty matrix, needed for AnnData.to_memory()
+    
+    return(fview)
+
+
+def build_multi_fview(bam_file, sites_df, mod_defs, region_defs, window=(-1000, 1000), 
+            fully_span=True, region_interval=30, filter_args={'dist':3000, 'cutoff':2},
+            tags=['np', 'ec', 'rq'], max_reads=300):
+    
+    fview_list = []
+    for i, site_info in sites_df.iterrows():
+        fview_chunk = build_single_fview(bam_file=bam_file, site_info=site_info, 
+                    mod_defs=mod_defs, region_defs=region_defs, window=window, 
+                    fully_span=fully_span, region_interval=region_interval, 
+                    filter_args=filter_args, tags=tags, max_reads=max_reads)
+        fview_list.append(fview_chunk)
+        
+    fview = ad.concat(fview_list, axis=0, merge='same', uns_merge='first', index_unique="_")
+    fview.obs.reset_index(inplace=True, drop=True)
+    
+    return(fview)
+
+
 

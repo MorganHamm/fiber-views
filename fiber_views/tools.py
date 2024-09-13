@@ -48,7 +48,7 @@ from . import utils
 # =============================================================================
 
 
-def count_kmers(fiber_view, k):
+def count_kmers(fview, k):
     """
     Count k-mers in each fiber in a fiber view.
 
@@ -56,7 +56,7 @@ def count_kmers(fiber_view, k):
 
     Parameters
     ----------
-    fiber_view : anndata.AnnData
+    fview : anndata.AnnData
         Fiber view object containing DNA sequence data in the 'seq' element of the `layers` attribute.
     k : int
         Length of the k-mers to count.
@@ -72,18 +72,18 @@ def count_kmers(fiber_view, k):
     # count kmers in each fiber
     kmer_to_idx = {bytes(k) : v for (k, v) in \
                    zip(itertools.product(b'ACGT', repeat=k), range(4**k))}
-    fiber_view.obsm['kmers'] = np.zeros((fiber_view.shape[0], 4**k))
-    for m in range(fiber_view.shape[1] - k + 1):
-        kmer_col = fiber_view.layers['seq'][:, m:m+k]
+    fview.obsm['kmers'] = np.zeros((fview.shape[0], 4**k))
+    for m in range(fview.shape[1] - k + 1):
+        kmer_col = fview.layers['seq'][:, m:m+k]
         for i, row in enumerate(kmer_col):
-            fiber_view.obsm['kmers'][i, kmer_to_idx[bytes(row)]] += 1
-    fiber_view.uns['kmer_len'] = k
+            fview.obsm['kmers'][i, kmer_to_idx[bytes(row)]] += 1
+    fview.uns['kmer_len'] = k
     # kmer_idx is the column index of the kmer matrix
-    fiber_view.uns['kmer_idx'] = list(kmer_to_idx.keys())
+    fview.uns['kmer_idx'] = list(kmer_to_idx.keys())
     return(None)
 
 
-def calc_kmer_dist(fiber_view, metric='cityblock'):
+def calc_kmer_dist(fview, metric='cityblock'):
     """
     Calculate pairwise k-mer distances between fibers in a fiber view.
 
@@ -91,7 +91,7 @@ def calc_kmer_dist(fiber_view, metric='cityblock'):
 
     Parameters
     ----------
-    fiber_view : anndata.AnnData
+    fview : anndata.AnnData
         Fiber view object containing k-mer count data in the 'kmers' element of the `obsm` attribute.
     metric : str, optional
         Distance metric to use for calculating pairwise distances. The default is 'cityblock'.
@@ -100,8 +100,8 @@ def calc_kmer_dist(fiber_view, metric='cityblock'):
     -------
     None
     """
-    dists =  distance.pdist(fiber_view.obsm['kmers'], metric=metric)
-    fiber_view.obsp['kmer_dist'] = distance.squareform(dists)
+    dists =  distance.pdist(fview.obsm['kmers'], metric=metric)
+    fview.obsp['kmer_dist'] = distance.squareform(dists)
     return(None)
 
 
@@ -112,7 +112,7 @@ def calc_kmer_dist(fiber_view, metric='cityblock'):
 # =============================================================================
 
 
-def plot_methylation(fiber_view, label_bases=False, ):
+def plot_methylation(fview, label_bases=False, ):
     """
     Plot a heatmap of DNA methylation levels in a fiber view.
 
@@ -120,7 +120,7 @@ def plot_methylation(fiber_view, label_bases=False, ):
 
     Parameters
     ----------
-    fiber_view : anndata.AnnData
+    fview : anndata.AnnData
         Fiber view object containing DNA methylation data in the 'm6a' and 'cpg' elements of the `layers` attribute, and DNA sequence data in the 'seq' element of the `layers` attribute.
     label_bases : bool, optional
         Whether to label each base in the DNA sequence on the plot. The default is `False`.
@@ -130,8 +130,8 @@ def plot_methylation(fiber_view, label_bases=False, ):
     ax : matplotlib.axes._subplots.AxesSubplot
         Axes object for the plot.
     """
-    mod_mtx = fiber_view.layers['m6a'].toarray() + \
-        fiber_view.layers['cpg'].toarray() * 2
+    mod_mtx = fview.layers['m6a'].toarray() + \
+        fview.layers['cpg'].toarray() * 2
     mod_colors = ((0.65,    0.65,   0.65,   1.0), # grey, unmetthylated
                   (0.78,    0.243,  0.725,  1.0), # purple m6a
                   (0.78,    0.243,  0.243,  1.0)) # red, cpg
@@ -139,7 +139,7 @@ def plot_methylation(fiber_view, label_bases=False, ):
                                              len(mod_colors))
     if label_bases:
         ax = sns.heatmap(mod_mtx, cmap=cmap,
-                         annot=fiber_view.layers['seq'].astype('U1'), fmt = '',
+                         annot=fview.layers['seq'].astype('U1'), fmt = '',
                          annot_kws={'size' : 8})
     else:
         ax = sns.heatmap(mod_mtx, cmap=cmap)
@@ -169,7 +169,7 @@ def plot_summary(sdata, bin_width=10):
     ax : matplotlib.axes._subplots.AxesSubplot
         Axes object for the plot.
     """
-    # TODO: make this better
+    # TODO: remove this
     sdata.var['ATs'] = np.sum(sdata.layers['As'], axis=0).T + np.sum(sdata.layers['Ts'], axis=0).T
     sdata.var['CpGs'] = np.sum(sdata.layers['CpGs'], axis=0).T
     sdata.var['m6a'] = np.sum(sdata.layers['m6a'], axis=0).T
@@ -208,6 +208,7 @@ def simple_region_plot(fview, mod='m6a', split_var=None):
     ax : matplotlib.axes._subplots.AxesSubplot
         Axes object for the plot.
     """
+    # TODO remove this, use new plotting functions
     # -0.5  :   no region, m6A
     # 0     :   no region
     # 0.5   :   nucleosome, m6A
@@ -372,7 +373,7 @@ def filter_regions(fview, base_name = 'nuc', new_base_name = None,
                           (region_df.length < length_limits[1]) &
                           (region_df.score > score_limits[0]) &
                           (region_df.score < score_limits[1])]
-    pos_array, len_array, score_array = utils.make_sparse_regions(region_df, fview.shape)
+    pos_array, len_array, score_array = utils.make_sparse_regions(region_df, fview.shape, interval=fview.uns['region_report_interval'])
     fview_out.layers["{}_pos".format(new_base_name)] = pos_array.tocsr()
     fview_out.layers["{}_len".format(new_base_name)] = len_array.tocsr()
     fview_out.layers["{}_score".format(new_base_name)] = score_array.tocsr()
@@ -466,7 +467,6 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
     new_adata = ad.AnnData(obs=new_obs, var=new_var)
     new_adata.X = csr_matrix(new_adata.shape)
     new_adata.uns = fview.uns.copy()
-    new_adata.uns['is_agg'] = True
     new_adata.uns['bin_width'] = bin_width
     del(new_adata.uns['region_report_interval'])
     # count occurence of each base in each bin
@@ -485,8 +485,6 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
             mod_matrices[mod] = fview.layers[mod]
         layer_name = "{}_count".format(mod)
         new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=int)
-    layer_name = "cpg_site_count"
-    new_adata.layers[layer_name] = np.zeros(new_adata.shape, dtype=int)
     # agg bases and mods
     for i, group in enumerate(list(new_adata.obs.index)):
         for j in np.arange(new_adata.shape[1]):
@@ -501,9 +499,6 @@ def agg_by_obs_and_bin(fview, obs_group_var='site_name', bin_width=10,
                  layer_name = "{}_count".format(mod)
                  new_adata.layers[layer_name][i, j] = \
                      np.sum(mod_matrices[mod][rows, bin_start:bin_end])
-            layer_name = "cpg_site_count"
-            new_adata.layers[layer_name][i, j] = \
-                np.sum(fview.layers['cpg_sites'][rows, bin_start:bin_end])
     new_adata.layers['read_coverage'] = new_adata.layers['A_count'] + \
          new_adata.layers['C_count'] + new_adata.layers['G_count'] + \
          new_adata.layers['T_count']
@@ -562,3 +557,45 @@ def get_sequences(fview):
     for i in range(fview.shape[0]):
         sequences.append(fview.layers['seq'][i].tobytes().decode("ascii"))
     return sequences
+
+
+def get_seq_records(fview, id_col="read_name"):
+    # TODO add doc string
+    # TODO why is this different from get_sequences?
+    seqs = [Seq(bytes(row)) for row in fview.layers['seq']]
+    seq_records = []
+    for i in range(fview.shape[0]):
+        seq_records.append(SeqRecord(seqs[i], id=fview.obs[id_col][i], 
+                                      description=fview.obs.index[i]))
+    return(seq_records)
+
+
+
+def mark_cpg_sites(fview, sparse=True):
+    # make a new layer 'cpg_sites' with cpg sites as True, 
+    # Known issue: all Cs at end of sequence are marked as not CpGs 
+    # TODO add doc string
+    cpg_sites = np.logical_and(fview.layers['seq'][:, 0:-1] == b'C', 
+                               fview.layers['seq'][:, 1:] == b'G')
+    cpg_sites = np.pad(cpg_sites, pad_width=((0,0),(0,1)), mode='constant')
+    if sparse:
+        cpg_sites = csr_matrix(cpg_sites)
+    fview.layers['cpg_sites'] = cpg_sites
+    if 'cpg_sites' not in fview.uns['mods']:
+        fview.uns['mods'].append('cpg_sites')
+    return(None)
+
+
+
+def split_fire(fview, input_region='msp', threshold=1, output_regions=['lnk', 'fire']):
+    # add linker and fire regions based on msp score
+    # TODO add doc string
+    filter_regions(fview, input_region, new_base_name=output_regions[0], 
+                        score_limits=(-np.inf, threshold), inplace=True)
+    filter_regions(fview, input_region, new_base_name=output_regions[1], 
+                        score_limits=(threshold, np.inf), inplace=True)
+    return(None)
+    
+
+
+

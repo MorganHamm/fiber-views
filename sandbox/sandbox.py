@@ -52,6 +52,19 @@ fv.tools.simple_region_plot(fview, mod='m6a', split_var='site_name')
 
 
 # -----------------------------------------------------------------------------
+# new constructor functions
+
+bam_file = "local/aligned.fiberseq.chr3_trunc.bam"
+
+site_info = anno_df.iloc[0,:]
+
+fview = fv.build_single_fview(bam_file, site_info, mod_defs = fv.PB_FS_mod_defs, 
+                      region_defs = fv.NUC_region_defs, window=(-2000, 4000), fully_span=False)
+
+fview = fv.build_multi_fview(bam_file, sites_df=anno_df, mod_defs = fv.PB_FS_mod_defs, 
+                      region_defs = fv.NUC_region_defs, window=(-2000, 4000), fully_span=False)
+
+# -----------------------------------------------------------------------------
 # plotting
 
 wd = 1
@@ -76,6 +89,9 @@ fv.plot.draw_mods(fview, ax, mod='cpg', color="red", width=wd)
 tend = time.time()
 print(tend - tstart)
 
+
+
+fv.plot.draw_mods(fview, ax, mod='m6a', color="red", width=wd)
 
 # -----------------------------------------------------------------------------
 # check that cpgs are landing on Cs...

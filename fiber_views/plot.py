@@ -130,7 +130,7 @@ def draw_split_lines(fview, ax=None, split_var="site_name", color="black"):
         ax = make_plot_ax(fview)
     h_lines = []
     for i, group in enumerate(fview.obs[split_var]):
-        if group != fview.obs[split_var][i-1]:
+        if group != fview.obs[split_var][max(i-1, 0)]:
             h_lines.append(i-0.5)
     ax.hlines(h_lines, xmin=fview.var.pos[0], xmax=fview.var.pos[-1], color=color)
     return(ax)
