@@ -282,6 +282,7 @@ def build_single_fview(bam_file, site_info, mod_defs, region_defs, window=(-1000
     fview.uns['region_report_interval'] = region_interval
     fview.uns['mod_defs'] = mod_defs
     fview.uns['region_defs'] = region_defs
+    fview.uns['bin_width'] = 1
     
     fview.X = csr_matrix(fview.shape) # empty matrix, needed for AnnData.to_memory()
     
