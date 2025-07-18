@@ -1,26 +1,13 @@
 ===========
-fiber_views
+fiber-views
 ===========
-
-
-.. image:: https://img.shields.io/pypi/v/fiber_views.svg
-        :target: https://pypi.python.org/pypi/fiber_views
-
-.. image:: https://img.shields.io/travis/morganhamm/fiber_views.svg
-        :target: https://travis-ci.com/morganhamm/fiber_views
-
-.. image:: https://readthedocs.org/projects/fiber-views/badge/?version=latest
-        :target: https://fiber-views.readthedocs.io/en/latest/?version=latest
-        :alt: Documentation Status
-
-
 
 
 a python package for extracting and manipulating "views" of Fiber-seq data
 
 
 * Free software: MIT license
-* Documentation: https://fiber-views.readthedocs.io.
+* Documentation: TODO
 
 Install
 -------
@@ -28,12 +15,11 @@ Install
 current install method: 
 ::
 
-    git clone https://github.com/MorganHamm/fiber_views.git
-    cd fiber_views
+    git clone https://github.com/MorganHamm/fiber-views.git
+    cd fiber-views
     conda env create --file=envs/env.yml
     conda activate fiber-views
     pip install -e .
-
 
 
 Features

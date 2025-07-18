@@ -1,0 +1,10 @@
+name: sphinx
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - sphinx
+  - numpy
+  - pandas
+  - seaborn
