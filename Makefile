@@ -65,9 +65,9 @@ clean-pyc: ## remove Python file artifacts
 # 	$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs
-	rm -f docs/fiber_views.rst
-	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ fiber_views
+	rm -f docs/source/fiber_views.rst
+	rm -f docs/source/modules.rst
+	sphinx-apidoc -o docs/source/ fiber_views
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 # 	$(BROWSER) docs/_build/html/index.html
