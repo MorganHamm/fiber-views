@@ -4,20 +4,3 @@
 .. automodule:: fiber_views
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

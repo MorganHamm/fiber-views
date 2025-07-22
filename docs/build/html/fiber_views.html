@@ -3,18 +3,18 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>fiber_views package &mdash; fiber-views 0.1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=2709fde1"></script>
-      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -55,12 +55,12 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#fiber-views-fiber-views-module">fiber_views.fiber_views module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-fiber_views.fiber_views">fiber_views.fiber_views module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.fiber_views.build_multi_fview"><code class="docutils literal notranslate"><span class="pre">build_multi_fview()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.fiber_views.build_single_fview"><code class="docutils literal notranslate"><span class="pre">build_single_fview()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#fiber-views-plot-module">fiber_views.plot module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-fiber_views.plot">fiber_views.plot module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.plot.annotate_boundaries"><code class="docutils literal notranslate"><span class="pre">annotate_boundaries()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.plot.draw_fiber_bars"><code class="docutils literal notranslate"><span class="pre">draw_fiber_bars()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.plot.draw_fiber_lines"><code class="docutils literal notranslate"><span class="pre">draw_fiber_lines()</span></code></a></li>
@@ -71,7 +71,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.plot.make_plot_ax"><code class="docutils literal notranslate"><span class="pre">make_plot_ax()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#fiber-views-tools-module">fiber_views.tools module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-fiber_views.tools">fiber_views.tools module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.tools.agg_by_obs_and_bin"><code class="docutils literal notranslate"><span class="pre">agg_by_obs_and_bin()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.tools.bin_sparse_regions"><code class="docutils literal notranslate"><span class="pre">bin_sparse_regions()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.tools.calc_kmer_dist"><code class="docutils literal notranslate"><span class="pre">calc_kmer_dist()</span></code></a></li>
@@ -85,7 +85,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.tools.split_fire"><code class="docutils literal notranslate"><span class="pre">split_fire()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#fiber-views-utils-module">fiber_views.utils module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-fiber_views.utils">fiber_views.utils module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.utils.ReadList"><code class="docutils literal notranslate"><span class="pre">ReadList</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#fiber_views.utils.ReadList.strand"><code class="docutils literal notranslate"><span class="pre">ReadList.strand</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#fiber_views.utils.ReadList.build_anno_df"><code class="docutils literal notranslate"><span class="pre">ReadList.build_anno_df()</span></code></a></li>
@@ -109,7 +109,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#fiber_views.utils.read_bed"><code class="docutils literal notranslate"><span class="pre">read_bed()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-fiber_views">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -146,7 +146,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="fiber_views.depr.html">fiber_views.depr package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="fiber_views.depr.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fiber_views.depr.html#fiber-views-depr-fiber-views-module">fiber_views.depr.fiber_views module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="fiber_views.depr.html#module-fiber_views.depr.fiber_views">fiber_views.depr.fiber_views module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="fiber_views.depr.html#fiber_views.depr.fiber_views.FiberView"><code class="docutils literal notranslate"><span class="pre">FiberView</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="fiber_views.depr.html#fiber_views.depr.fiber_views.FiberView.get_seq_records"><code class="docutils literal notranslate"><span class="pre">FiberView.get_seq_records()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiber_views.depr.html#fiber_views.depr.fiber_views.FiberView.mark_cpg_sites"><code class="docutils literal notranslate"><span class="pre">FiberView.mark_cpg_sites()</span></code></a></li>
@@ -155,13 +155,13 @@
 <li class="toctree-l3"><a class="reference internal" href="fiber_views.depr.html#fiber_views.depr.fiber_views.build_fview"><code class="docutils literal notranslate"><span class="pre">build_fview()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="fiber_views.depr.html#fiber-views-depr-tools-module">fiber_views.depr.tools module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="fiber_views.depr.html#module-fiber_views.depr.tools">fiber_views.depr.tools module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="fiber_views.depr.html#fiber_views.depr.tools.plot_methylation"><code class="docutils literal notranslate"><span class="pre">plot_methylation()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="fiber_views.depr.html#fiber_views.depr.tools.plot_summary"><code class="docutils literal notranslate"><span class="pre">plot_summary()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="fiber_views.depr.html#fiber_views.depr.tools.simple_region_plot"><code class="docutils literal notranslate"><span class="pre">simple_region_plot()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="fiber_views.depr.html#module-contents">Module contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fiber_views.depr.html#module-fiber_views.depr">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -170,9 +170,9 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="fiber-views-fiber-views-module">
-<h2>fiber_views.fiber_views module<a class="headerlink" href="#fiber-views-fiber-views-module" title="Link to this heading"></a></h2>
-<p id="module-fiber_views.fiber_views">Main module.</p>
+<section id="module-fiber_views.fiber_views">
+<span id="fiber-views-fiber-views-module"></span><h2>fiber_views.fiber_views module<a class="headerlink" href="#module-fiber_views.fiber_views" title="Link to this heading"></a></h2>
+<p>Main module.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="fiber_views.fiber_views.build_multi_fview">
 <span class="sig-prename descclassname"><span class="pre">fiber_views.fiber_views.</span></span><span class="sig-name descname"><span class="pre">build_multi_fview</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bam_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sites_df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mod_defs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_defs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(-1000,</span> <span class="pre">1000)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fully_span</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'cutoff':</span> <span class="pre">2,</span> <span class="pre">'dist':</span> <span class="pre">3000}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['np',</span> <span class="pre">'ec',</span> <span class="pre">'rq']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_reads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiber_views.fiber_views.build_multi_fview" title="Link to this definition"></a></dt>
@@ -184,9 +184,9 @@
 <dd></dd></dl>
 
 </section>
-<section id="fiber-views-plot-module">
-<h2>fiber_views.plot module<a class="headerlink" href="#fiber-views-plot-module" title="Link to this heading"></a></h2>
-<p id="module-fiber_views.plot">Created on Wed Aug 28 13:33:42 2024</p>
+<section id="module-fiber_views.plot">
+<span id="fiber-views-plot-module"></span><h2>fiber_views.plot module<a class="headerlink" href="#module-fiber_views.plot" title="Link to this heading"></a></h2>
+<p>Created on Wed Aug 28 13:33:42 2024</p>
 <p>&#64;author: morgan</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="fiber_views.plot.annotate_boundaries">
@@ -229,9 +229,9 @@
 <dd></dd></dl>
 
 </section>
-<section id="fiber-views-tools-module">
-<h2>fiber_views.tools module<a class="headerlink" href="#fiber-views-tools-module" title="Link to this heading"></a></h2>
-<p id="module-fiber_views.tools">Created on Wed Sep  7 14:37:04 2022</p>
+<section id="module-fiber_views.tools">
+<span id="fiber-views-tools-module"></span><h2>fiber_views.tools module<a class="headerlink" href="#module-fiber_views.tools" title="Link to this heading"></a></h2>
+<p>Created on Wed Sep  7 14:37:04 2022</p>
 <p>&#64;author: morgan</p>
 <p>&#64;description: A set of usefull tools for workign with fiber views</p>
 <dl class="py function">
@@ -439,13 +439,13 @@ The default value is ‘nuc’.</p></li>
 <dd></dd></dl>
 
 </section>
-<section id="fiber-views-utils-module">
-<h2>fiber_views.utils module<a class="headerlink" href="#fiber-views-utils-module" title="Link to this heading"></a></h2>
-<p id="module-fiber_views.utils">Created on Tue Aug 30 16:05:34 2022</p>
+<section id="module-fiber_views.utils">
+<span id="fiber-views-utils-module"></span><h2>fiber_views.utils module<a class="headerlink" href="#module-fiber_views.utils" title="Link to this heading"></a></h2>
+<p>Created on Tue Aug 30 16:05:34 2022</p>
 <p>&#64;author: morgan</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="fiber_views.utils.ReadList">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fiber_views.utils.</span></span><span class="sig-name descname"><span class="pre">ReadList</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">normal_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strand</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'+'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiber_views.utils.ReadList" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fiber_views.utils.</span></span><span class="sig-name descname"><span class="pre">ReadList</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">normal_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strand</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'+'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiber_views.utils.ReadList" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></p>
 <p>A simple list of pysam.libcalignedsegment.PileupRead objects, plus methods
 useful for constructing anndata elements from the read objects. also tracks
@@ -893,9 +893,9 @@ The bed file should follow bed standard and not include column names.</p>
 </dd></dl>
 
 </section>
-<section id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
-<p id="module-fiber_views">Top-level package for fiber_views.</p>
+<section id="module-fiber_views">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-fiber_views" title="Link to this heading"></a></h2>
+<p>Top-level package for fiber_views.</p>
 </section>
 </section>
 

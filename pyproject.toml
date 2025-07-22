@@ -1,0 +1,33 @@
+[build-system]
+
+requires = ["setuptools >= 64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["fiber_views"]
+py-modules = ["__init__"]
+
+[project]
+name = "fiber-views"
+description = "Fiber-views puts Fiber-seq data into an annotated data (anndata) format for easy manipulation, analysis, and visualization"
+readme = "README.rst"
+license = "MIT"
+license-files = ["LICENSE"]
+version = "0.1.0"
+dependencies = [
+  "pysam>=0.19.1",
+  "numpy>=1.23",
+  "pandas",
+  "anndata",
+  "spyder",
+  "biopython",
+  "seaborn",
+  "scikit-learn",
+  "sphinx",
+  "sphinx-rtd-theme"
+]
+requires-python = ">= 3.8"
+authors = [{name = "Morgan Hamm"}] 
+
+[project.urls]
+Repository = "https://github.com/MorganHamm/fiber-views"
