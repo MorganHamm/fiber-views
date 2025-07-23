@@ -644,55 +644,6 @@ def get_strand_correct_regions(read, tags=('ns', 'nl'), centered=False):
         starts = starts - read.query_position
     return((starts, lengths, scores))
 
-
-def read_bed(bed_file):
-    """
-    Read a BED file and return a pandas DataFrame.
-
-    Parameters
-    ----------
-    bed_file : str
-        The file path of the BED file to be read.
-        The bed file should follow bed standard and not include column names.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A DataFrame containing the data from the BED file.
-    """
-    bed_data = pd.read_csv(bed_file, sep="\t", header=None)
-    BED_HEADER = ['chrom', 'start', 'end', 'name', 'score', 'strand', 'thick_start',
-                  'thick_end', 'item_rgb', 'block_count', 'block_widths', 'block_starts']
-    bed_data = bed_data.set_axis(BED_HEADER[0:bed_data.shape[1]], axis=1)
-    return(bed_data)
-
-
-def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
-    """
-    Convert a data frame in BED format to another data frame with a different layout.
-    
-    Parameters
-    ----------
-    bed_df : pandas.DataFrame
-        Data frame in BED format, with columns 'chrom', 'start', 'end', 'strand', 'name', and 'score'.
-    entry_name_type : str, optional
-        Column name for the unique identifier for each feature. The default is "gene_id".
-    
-    Returns
-    -------
-    anno_df : pandas.DataFrame
-        Data frame with columns 'seqid', 'pos', 'strand', 'entry_name_type', and 'score'.
-    """
-    anno_df = pd.DataFrame({
-        "seqid": bed_df.chrom,
-        "pos": bed_df.start * (bed_df.strand == "+") +
-        bed_df.end * (bed_df.strand == "-"),
-        "strand": bed_df.strand,
-        entry_name_type: bed_df.name,
-        "score": bed_df.score,
-    })
-    return(anno_df)
-
    
 def make_sparse_regions(region_df, shape, bin_width = 1, interval = 30):
     """Make a sparse matrix representing genomic regions.
