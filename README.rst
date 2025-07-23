@@ -6,7 +6,7 @@ fiber-views
 a python package for extracting and manipulating "views" of Fiber-seq data
 
 * Free software: MIT license
-* Documentation: TODO
+* Documentation: `ReadTheDocs <https://fiber-views.readthedocs.io>`_
 
 DISCLAIMER
 ----------

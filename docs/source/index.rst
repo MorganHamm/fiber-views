@@ -1,15 +1,13 @@
 .. fiber-views documentation master file, created by
    sphinx-quickstart on Fri Jul 18 17:08:18 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
 
-fiber-views documentation
-=========================
+fiber-views
+===========
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+fiber-views puts Fiber-seq data into annotated data matrices (`anndata <https://anndata.readthedocs.io>`_) for easy manipulation, clustering, analysis, and visualization.
 
+..
+    This is a test of linking to documentation: use the function :py:func:`fiber_views.tools.bin_sparse_regions` to bin regions...
 
 .. toctree::
    :maxdepth: 2
