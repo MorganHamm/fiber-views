@@ -165,7 +165,7 @@ def build_single_fview(bam_file, site_info, mod_defs, region_defs, window=(-1000
     fview.uns['mods'] = []
     for mod_def in mod_defs:
         fview.layers[mod_def['name']] = reads.build_mod_array_from_def(window, 
-                                                    mod_def=mod_def, sparse=True)
+                                                    mod_def=mod_def, sparse=True).tocsr()
         fview.uns['mods'].append(mod_def['name'])
     # region layers
     fview.uns['region_base_names'] = []
