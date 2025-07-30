@@ -54,7 +54,7 @@ def draw_fiber_lines(fview, ax=None, color="#606060"):
     if ('s_pos' not in fview.obs.columns) | ('e_pos' not in fview.obs.columns):
         annotate_boundaries(fview)
     for i in range(fview.shape[0]):
-        ax.hlines(y=i, xmin=fview.obs.s_pos[i], xmax=fview.obs.e_pos[i],
+        ax.hlines(y=i, xmin=fview.obs.s_pos.iloc[i], xmax=fview.obs.e_pos.iloc[i],
                  color=color, lw=0.5, zorder=1)
     return(ax)
 
@@ -67,8 +67,8 @@ def draw_fiber_bars(fview, ax=None, color="#d0d0d0", width=DEFAULT_WIDTH):
         annotate_boundaries(fview)
     patch_list = []
     for i in range(fview.shape[0]):
-        patch = patches.Rectangle((fview.obs.s_pos[i], i - 0.5 * width), 
-                                  width=fview.obs.e_pos[i] - fview.obs.s_pos[i], 
+        patch = patches.Rectangle((fview.obs.s_pos.iloc[i], i - 0.5 * width), 
+                                  width=fview.obs.e_pos.iloc[i] - fview.obs.s_pos.iloc[i], 
                                   height=width, color=color, zorder=1)
         patch_list.append(patch)
         # ax.add_patch(patch)
