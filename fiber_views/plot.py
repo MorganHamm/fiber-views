@@ -37,10 +37,11 @@ def annotate_boundaries(fview):
     return(None)
 
 
-def make_plot_ax(fview):
-    fig, ax = plt.subplots()
+def make_plot_ax(fview, ax=None):
+    if ax == None:
+        fig, ax = plt.subplots()
     ax.set_xlim(fview.var.pos[0], fview.var.pos[-1])
-    ax.set_ylim(0, fview.shape[0])
+    ax.set_ylim(fview.shape[0], -1) # inverted axis, first fiber at top
     return(ax)
 
 
@@ -67,7 +68,7 @@ def draw_fiber_bars(fview, ax=None, color="#d0d0d0", width=DEFAULT_WIDTH):
         annotate_boundaries(fview)
     patch_list = []
     for i in range(fview.shape[0]):
-        patch = patches.Rectangle((fview.obs.s_pos.iloc[i], i - 0.5 * width), 
+        patch = patches.Rectangle((fview.obs.s_pos.iloc[i], i - 0.5 * width), lw=0,
                                   width=fview.obs.e_pos.iloc[i] - fview.obs.s_pos.iloc[i], 
                                   height=width, color=color, zorder=1)
         patch_list.append(patch)
@@ -83,7 +84,7 @@ def draw_regions(fview, ax=None, base_name='msp', color="red", width=DEFAULT_WID
     region_df = fv.tools.make_region_df(fview, base_name=base_name, zero_pos='center')
     patch_list = []
     for i, region in region_df.iterrows():
-        patch = patches.Rectangle((region.start, region.row - 0.5 * width), 
+        patch = patches.Rectangle((region.start, region.row - 0.5 * width), lw=0,
                                   width=region.length, height=width, color=color, zorder=3)
         patch_list.append(patch)
     patch_coll = PatchCollection(patch_list, match_original=True)
@@ -98,7 +99,7 @@ def draw_mods(fview, ax=None, mod='m6a', width=DEFAULT_WIDTH, color='#000000'):
     I, J = np.nonzero(fview.layers[mod])
     J_pos = [fview.var.pos[j] for j in J]
     for k in range(len(I)):
-        patch = patches.Rectangle((J_pos[k], I[k] - 0.5 * width), 
+        patch = patches.Rectangle((J_pos[k], I[k] - 0.5 * width), lw=0,
                                   width=1, height=width, color=color, zorder=4)
         patch_list.append(patch)
     patch_coll = PatchCollection(patch_list, match_original=True)
@@ -113,9 +114,9 @@ def draw_mods_offset(fview, ax=None, mod='m6a', width=DEFAULT_WIDTH, color='#000
     # patch_list = []
     I, J = np.nonzero(fview.layers[mod])
     J_pos = [fview.var.pos[j] for j in J]
-    patch = patches.Rectangle((0, - 0.5 * width), 
+    patch = patches.Rectangle((0, - 0.5 * width), lw=0,
                                  width=1, height=width, color=color, zorder=4) 
-    patch = patches.Rectangle((0, 0), 
+    patch = patches.Rectangle((0, 0), lw=0,
                                  width=1, height=width, color=color, zorder=4) 
     patch_coll = PatchCollection([patch], match_original=True, 
                                  offsets=np.c_[J_pos, I], offset_transform=ax.transData)
