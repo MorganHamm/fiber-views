@@ -7,3 +7,7 @@ __version__ = '0.1.0'
 
 from .fiber_views import *
 from . import tools, utils, plot
+import os
+
+example_bam_path = os.path.abspath(__path__[0] + "/../examples/data/chr3_sample.aligned.fiberseq.bam")
+example_bed_path = os.path.abspath(__path__[0] + "/../examples/data/chr3_sample_TAIR10_genes.bed")

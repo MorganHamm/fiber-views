@@ -32,6 +32,11 @@ ONT_FS_mod_defs = [
     {'name' : '5hmC', 'mod_code' : [("C", 0, "h"), ("G", 1, "h")], 'threshold' : 220, 'rev_offset' : 0}
     ]
 
+
+mod_def_dict = {'PacBio_Fiberseq' : PB_FS_mod_defs,
+                'ONT_Fiberseq' : ONT_FS_mod_defs,
+                'NONE' : []}
+
 # deffinitions for regions ----------------------------------------------------
 
 # BAM with nucleosomes called
@@ -48,6 +53,10 @@ FIRE_region_defs = [
 
 # No regions called
 NONE_regions_def = []
+
+region_def_dict = {'nucleosomes' : NUC_region_defs,
+                   'FIRE' : FIRE_region_defs,
+                   'NONE' : []}
 
 # -----------------------------------------------------------------------------
 
@@ -77,7 +86,7 @@ def read_bed(bed_file):
     return(bed_data)
 
 
-def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
+def bed_to_anno_df(bed_df, entry_name_type="gene_id", aligned_pos="start"):
     """
     Convert a data frame in BED format to another data frame with a different layout.
     
@@ -87,19 +96,30 @@ def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
         Data frame in BED format, with columns 'chrom', 'start', 'end', 'strand', 'name', and 'score'.
     entry_name_type : str, optional
         Column name for the unique identifier for each feature. The default is "gene_id".
+    aligned_pos : str, optional
+        The position in the bed entries to use as the 'pos' or aligned base. 
+        Can be 'start', 'end', or 'center' (default is 'start').
     
     Returns
     -------
     anno_df : pandas.DataFrame
-        Data frame with columns 'seqid', 'pos', 'strand', 'entry_name_type', and 'score'.
+        Data frame with columns 'seqid', 'pos', 'strand', [entry_name_type], and 'score'.
     """
+    
+    if aligned_pos == 'start':
+        pos_column = bed_df.start * (bed_df.strand == "+") + bed_df.end * (bed_df.strand == "-")
+    elif aligned_pos == 'end':
+        pos_column = bed_df.end * (bed_df.strand == "+") + bed_df.start * (bed_df.strand == "-")
+    elif aligned_pos == 'center': 
+        pos_column = int( (bed_df.start + bed_df.end) / 2 )
+    
+    
     anno_df = pd.DataFrame({
-        "seqid": bed_df.chrom,
-        "pos": bed_df.start * (bed_df.strand == "+") +
-        bed_df.end * (bed_df.strand == "-"),
-        "strand": bed_df.strand,
-        entry_name_type: bed_df.name,
-        "score": bed_df.score,
+        "seqid" : bed_df.chrom,
+        "pos" : pos_column,
+        "strand" : bed_df.strand,
+        entry_name_type : bed_df.name,
+        "score" : bed_df.score,
     })
     return(anno_df)
 
@@ -108,7 +128,7 @@ def bed_to_anno_df(bed_df, entry_name_type="gene_id"):
 # FIBER-VIEW BUILDERS:
 # =============================================================================
 
-def build_single_fview(bam_file, site_info, mod_defs, region_defs, window=(-1000, 1000), 
+def build_single_fview(bam_file, site_info, mod_defs='PacBio_Fiberseq', region_defs='FIRE', window=(-1000, 1000), 
             fully_span=True, region_interval=30, filter_args={'dist':3000, 'cutoff':2},
             tags=['np', 'ec', 'rq'], max_reads=300):
     
@@ -121,9 +141,9 @@ def build_single_fview(bam_file, site_info, mod_defs, region_defs, window=(-1000
         Path to the BAM file containing Fiber-seq reads.
     site_info : dict or pandas.Series
         genomic position to center on, dict or series with keys 'seqid', 'pos', and 'strand'.
-    mod_defs : list of dict
+    mod_defs : str OR list of dicts
         List of modification definitions, each dict describing a modification to extract.
-    region_defs : list of dict
+    region_defs : str OR list of dict
         List of region definitions, each dict describing a region type to extract.
     window : tuple of int, optional
         window (upstream, downstream) around the site to extract (default is (-1000, 1000)).
@@ -144,11 +164,15 @@ def build_single_fview(bam_file, site_info, mod_defs, region_defs, window=(-1000
         Annotated data matrix containing read, sequence, modification, and region layers for the site.
         Returns None if no reads pass filtering.
     """
-    
+    site_info = pd.Series(site_info)
     bamfile = pysam.AlignmentFile(bam_file, "rb")
     reads = utils.ReadList().get_reads(bamfile, 
                                  ref_pos=(site_info['seqid'], site_info['pos'], site_info['strand']),
                                  max_reads=max_reads)
+    if type(mod_defs) == str:
+        mod_defs = mod_def_dict[mod_defs]
+    if type(region_defs) == str:
+        region_defs = region_def_dict[region_defs]
     if fully_span:
         reads.filter_by_window(window, inplace=True)
     if filter_args is not None:
