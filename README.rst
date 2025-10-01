@@ -18,7 +18,7 @@ I also cannot guarantee its function or accuracy of results.
 Install
 -------
 
-current install method: 
+An up to date version of conda is required for installation: 
 ::
 
     git clone https://github.com/MorganHamm/fiber-views.git
@@ -31,7 +31,24 @@ current install method:
 Features
 --------
 
-* TODO
+* Access m6A and mCpG methylation, methylation sensitive patches (MSPs), nucleosome patches, all in sparse matrix form
+* raw read sequence in matrix form
+* Fiber metadata like read quality and arbitrary BAM tags
+* Cluster, re-arange, aggregate fibers
+* flexible plotting functions
+
+
+Publications
+------------
+
+Fiber-views has been used for analysis and visualization in the following publications:
+
+Bubb, K.L., Hamm, M.O., Tullius, T.W., Min, J.K., Ramirez-Corona, B., Mueth, N.A., Ranchalis, J., Mao, Y., Bergstrom, E.J., Vollger, M.R., Trapnell, C., Cuperus, J.T., Stergachis, A.B., Queitsch, C., 2025. The regulatory potential of transposable elements in maize. Nat. Plants 11, 1181–1192. https://doi.org/10.1038/s41477-025-02002-z
+
+Bohaczuk, S.C., Amador, Z.J., Li, C., Mallory, B.J., Swanson, E.G., Ranchalis, J., Vollger, M.R., Munson, K.M., Walsh, T., Hamm, M.O., Mao, Y., Lieber, A., Stergachis, A.B., 2024. Resolving the chromatin impact of mosaic variants with targeted Fiber-seq. Genome Res. 34, 2269–2278. https://doi.org/10.1101/gr.279747.124
+
+
+
 
 Credits
 -------
