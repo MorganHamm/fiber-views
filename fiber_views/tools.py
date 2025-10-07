@@ -173,11 +173,11 @@ def make_dense_regions(fview, base_name = 'nuc', report="ones"):
         Each position in the matrix where a region is not present is set to 0, positions where ar region is present
         may be set to either the length or score value of the region occupying that position.
     """
+    region_df = make_region_df(fview, base_name=base_name)
     if report == 'ones':
         dtype = int
     else:
         dtype = region_df[report].dtype
-    region_df = make_region_df(fview, base_name=base_name)
     dense_mtx = np.zeros(fview.shape, dtype=dtype)
     for i, region in region_df.iterrows():
         start = max(region.start, 0)
@@ -428,8 +428,22 @@ def get_sequences(fview):
 
 
 def get_seq_records(fview, id_col="read_name"):
-    # TODO add doc string
-    # TODO why is this different from get_sequences?
+    """
+    Convert fiber view sequences to BioPython SeqRecord objects.
+    
+    Parameters
+    ----------
+    fview : anndata.AnnData
+        The fiber view object containing sequence data.
+    id_col : str, optional
+        The column name in obs to use as the sequence ID. The default is "read_name".
+    
+    Returns
+    -------
+    list of Bio.SeqRecord.SeqRecord
+        A list of SeqRecord objects where each record contains the sequence from one
+        row of the fiber view.
+    """
     seqs = [Seq(bytes(row)) for row in fview.layers['seq']]
     seq_records = []
     for i in range(fview.shape[0]):
@@ -440,9 +454,30 @@ def get_seq_records(fview, id_col="read_name"):
 
 
 def mark_cpg_sites(fview, sparse=True):
-    # make a new layer 'cpg_sites' with cpg sites as True, 
-    # Known issue: all Cs at end of sequence are marked as not CpGs 
-    # TODO add doc string
+    """
+    Identify and mark CpG sites in a fiber view.
+    
+    This function creates a new layer 'cpg_sites' in the fiber view with True values
+    at positions that are CpG dinucleotides (C followed by G). The 'cpg_sites' layer
+    is also added to the 'mods' list in uns.
+    
+    Parameters
+    ----------
+    fview : anndata.AnnData
+        The fiber view object to mark CpG sites in.
+    sparse : bool, optional
+        If True, store the CpG sites as a sparse matrix. If False, store as a dense
+        array. The default is True.
+    
+    Returns
+    -------
+    None
+        The function modifies the fiber view object in place, adding a 'cpg_sites' layer.
+    
+    Notes
+    -----
+    Known issue: All Cs at the end of each sequence are marked as not CpGs.
+    """
     cpg_sites = np.logical_and(fview.layers['seq'][:, 0:-1] == b'C', 
                                fview.layers['seq'][:, 1:] == b'G')
     cpg_sites = np.pad(cpg_sites, pad_width=((0,0),(0,1)), mode='constant')
@@ -456,8 +491,31 @@ def mark_cpg_sites(fview, sparse=True):
 
 
 def split_fire(fview, input_region='msp', threshold=1, output_regions=['lnk', 'fire']):
-    # add linker and fire regions based on msp score
-    # TODO add doc string
+    """
+    Split methylation-sensitive patches (MSPs) into linker and FIRE regions based on score.
+    
+    This function creates two new region types by filtering the input region type based
+    on a score threshold. Regions with scores below the threshold are classified as one
+    type (default: linker), and regions with scores above the threshold are classified
+    as another type (default: FIRE).
+    
+    Parameters
+    ----------
+    fview : anndata.AnnData
+        The fiber view object containing region data.
+    input_region : str, optional
+        The name of the region type to split. The default is 'msp'.
+    threshold : float, optional
+        The score threshold for splitting regions. The default is 1.
+    output_regions : list of str, optional
+        A list of two names for the output region types [low_score, high_score].
+        The default is ['lnk', 'fire'].
+    
+    Returns
+    -------
+    None
+        The function modifies the fiber view object in place, adding new region layers.
+    """
     filter_regions(fview, input_region, new_base_name=output_regions[0], 
                         score_limits=(-np.inf, threshold), inplace=True)
     filter_regions(fview, input_region, new_base_name=output_regions[1], 

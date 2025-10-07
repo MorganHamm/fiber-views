@@ -269,32 +269,29 @@ class ReadList(list):
     
     def build_mod_array_from_def(self, window, mod_def, strand=None, sparse=True):
         """
-        Create a base modification matrix for the reads in the `ReadList` object.
+        Create a base modification matrix for reads using a modification definition dictionary.
         
         Parameters
         ----------
         window : tuple
             A tuple of integers representing the window of +/- window_offset. The
             tuple should be of the form (window_start, window_end).
-        mod_type : list, optional
-            A list of tuples representing the base modification type to consider.
-            The default is M6A_MODS.
+        mod_def : dict
+            A modification definition dictionary containing 'mod_code', 'threshold', 
+            and 'rev_offset' keys.
         strand : str, optional
             The strand of the genomic query position. If not provided, the strand
             information of the `ReadList` object is used. The default is None.
         sparse : bool, optional
-            If True, the base odification matrix is returned in sparse format. If 
+            If True, the base modification matrix is returned in sparse format. If 
             False, the matrix is returned in dense format. The default is True.
-        score_cutoff : int, optional
-            The minimum score required for a base modification to be considered. The
-            default is 200.
-            
+        
         Returns
         -------
-        mod_mtx : numpy array or scipy sparse matrix
-            A base modification matrix for the reads in the `ReadList` object.
+        scipy.sparse.coo_matrix or numpy.ndarray
+            A base modification matrix for the reads in the `ReadList` object, with
+            modifications defined by mod_def.
         """
-        # TODO update readme for mod_def
         window_len = window[1] - window[0]
         if strand is None:
             strand = self.strand
@@ -552,33 +549,32 @@ def get_strand_correct_mods(read, mod_type=M6A_MODS, centered=False, score_cutof
 
 def get_strand_correct_mods_from_def(read, mod_def, centered=False):
     """
-    Retrieve modified bases in a read and correct their positions to match the forward genomic strand.
+    Retrieve modified bases in a read using a modification definition and correct positions for strand.
+    
+    This function extracts modification positions from a read using a custom modification
+    definition dictionary and corrects the positions to match the forward genomic strand.
     
     Parameters
     ----------
     read : pysam.libcalignedsegment.AlignedSegment
         A read containing modified bases.
-    mod_type : list, optional
-        A list of modified bases to consider, in the form (base, index, code).
-        The default is M6A_MODS.
+    mod_def : dict
+        A modification definition dictionary containing 'mod_code' (list of tuples),
+        'threshold' (int), and 'rev_offset' (int) keys.
     centered : bool, optional
         Whether to center the positions around the query position of the read.
         The default is False.
-    score_cutoff : int, optional
-        The minimum score required for a modified base to be included.
-        The default is 200.
-        
+    
     Returns
     -------
-    mods : numpy.ndarray
-        An array of positions of modified bases, corrected for strand.
-        
+    numpy.ndarray or None
+        An array of positions of modified bases, corrected for strand. Returns None
+        if no modifications are found.
+    
     Example
     -------
-    mods = get_strand_correct_mods(read)
+    mods = get_strand_correct_mods_from_def(read, mod_def)
     """
-    # TODO update readme for mod_def
-    # get modification positions and correct them to match the forward genomic strand
     raw_mods = get_mod_pos_from_rec(
         read.alignment, mods=mod_def['mod_code'], score_cutoff=mod_def['threshold'])
     if raw_mods is None:
