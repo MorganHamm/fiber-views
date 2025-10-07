@@ -1,14 +1,6 @@
 fiber\_views package
 ====================
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   fiber_views.depr
-
 Submodules
 ----------
 
