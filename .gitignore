@@ -108,3 +108,6 @@ ENV/
 
 # MH local files
 local/*
+
+# example figures
+examples/example_figures/
